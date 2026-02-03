@@ -122,7 +122,7 @@ const AdminLeadTable = ({ leads, onUpdate, onDownload = () => {} }) => {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDownload(lead.documents[0]);
+                        onDownload(lead.documents[0].filename);
                       }}
                       className="flex items-center gap-1 text-blue-600 hover:underline text-[10px] font-bold uppercase tracking-widest"
                     >
