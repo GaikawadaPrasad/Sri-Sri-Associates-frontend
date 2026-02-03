@@ -6,8 +6,6 @@ import {
   TrendingUp,
   IndianRupee,
   Clock,
-  Search,
-  Filter,
   Users,
   Target,
 } from "lucide-react";
@@ -26,13 +24,14 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeView, setActiveView] = useState("dashboard");
-  const [targetProgress, setTargetProgress] = useState({}); // progress per client
+  const [targetProgress, setTargetProgress] = useState({}); // per client
 
   useEffect(() => {
     fetchAdminStats();
     fetchClients();
   }, []);
 
+  /** --- FETCH ALL LEADS & STATS --- */
   const fetchAdminStats = async () => {
     try {
       setLoading(true);
@@ -43,7 +42,7 @@ const AdminDashboard = () => {
       const disbursedLeads = allLeads.filter((l) => l.status === "Disbursed");
       const totalValue = disbursedLeads.reduce(
         (sum, lead) => sum + (Number(lead.loanAmount) || 0),
-        0,
+        0
       );
 
       setLeads(allLeads);
@@ -53,7 +52,6 @@ const AdminDashboard = () => {
         disbursedCount: disbursedLeads.length,
         totalBusinessValue: totalValue,
       });
-      toast.success("Admin stats updated");
     } catch (err) {
       toast.error("Failed to load admin stats");
       console.error("Failed to load admin stats", err);
@@ -62,6 +60,7 @@ const AdminDashboard = () => {
     }
   };
 
+  /** --- FETCH CLIENTS --- */
   const fetchClients = async () => {
     try {
       const { data } = await API.get("/users/clients");
@@ -72,60 +71,41 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchTargetProgress = async (clientId) => {
+  /** --- DOWNLOAD FILE --- */
+  const handleDownload = async (filename) => {
+    if (!filename) {
+      toast.error("No file found");
+      return;
+    }
     try {
-      const { data } = await API.get("/targets/progress", {
-        params: {
-          clientId,
-          month: new Date().getMonth() + 1,
-          year: new Date().getFullYear(),
-        },
+      const res = await API.get(`/leads/download/${filename}`, {
+        responseType: "blob",
       });
-
-      // store progress per client
-      setTargetProgress((prev) => ({
-        ...prev,
-        [clientId]: {
-          ...data,
-          month: new Date().getMonth() + 1,
-          year: new Date().getFullYear(),
-        },
-      }));
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-      toast.error("Failed to fetch target progress");
+      toast.error("Download failed");
       console.error(err);
     }
   };
 
-  const handleSetTarget = async (clientId, amount, month, year) => {
-    try {
-      await API.post("/targets/set", {
-        client: clientId,
-        targetAmount: Number(amount),
-        month,
-        year,
-      });
-
-      toast.success("Target set successfully!");
-
-      // fetch updated progress for this client
-      fetchTargetProgress(clientId);
-    } catch (err) {
-      toast.error("Failed to set target");
-      console.error(err);
-    }
-  };
-
+  /** --- FILTER LEADS BY SEARCH --- */
   const filteredLeads = leads.filter(
     (lead) =>
       lead.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.mobileNumber?.includes(searchTerm) ||
-      lead.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()),
+      lead.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="p-4 lg:p-8 space-y-8 bg-[#F8FAFF] min-h-screen">
-      {/* Header */}
+      {/* --- HEADER --- */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-[#0A1D37] tracking-tight uppercase">
@@ -135,7 +115,6 @@ const AdminDashboard = () => {
             Sri Sri Associates • Business Intelligence
           </p>
         </div>
-
         <div className="flex items-center gap-3">
           <div className="bg-white px-4 py-2.5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
             <Clock className="text-blue-600" size={18} />
@@ -149,26 +128,11 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* --- STATS GRID --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          label="Total Leads"
-          value={stats.totalCount}
-          icon={<FileText />}
-          color="blue"
-        />
-        <StatCard
-          label="Pending Review"
-          value={stats.pendingCount}
-          icon={<TrendingUp />}
-          color="amber"
-        />
-        <StatCard
-          label="Disbursements"
-          value={stats.disbursedCount}
-          icon={<CheckCircle />}
-          color="green"
-        />
+        <StatCard label="Total Leads" value={stats.totalCount} icon={<FileText />} color="blue" />
+        <StatCard label="Pending Review" value={stats.pendingCount} icon={<TrendingUp />} color="amber" />
+        <StatCard label="Disbursements" value={stats.disbursedCount} icon={<CheckCircle />} color="green" />
         <StatCard
           label="Total Business"
           value={`₹${(stats.totalBusinessValue / 100000).toFixed(2)} Lacs`}
@@ -177,42 +141,21 @@ const AdminDashboard = () => {
         />
       </div>
 
-      {/* Quick Tools */}
+      {/* --- QUICK TOOLS --- */}
       <div className="space-y-4 mt-6">
         <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
-          <span className="w-1 h-4 bg-slate-900 rounded-full"></span> Quick
-          Tools
+          <span className="w-1 h-4 bg-slate-900 rounded-full"></span> Quick Tools
         </h3>
         <div className="bg-[#F6FAFF] border border-blue-100 rounded-3xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 overflow-x-auto">
-          <ToolItem
-            icon={<Users />}
-            label="All Clients"
-            onClick={() => setActiveView("clients")}
-          />
-          <ToolItem
-            icon={<FileText />}
-            label="All Leads"
-            onClick={() => setActiveView("all-leads")}
-          />
-          <ToolItem
-            icon={<TrendingUp />}
-            label="Pending Leads"
-            onClick={() => setActiveView("pending")}
-          />
-          <ToolItem
-            icon={<Target />}
-            label="Targets"
-            onClick={() => setActiveView("targets")}
-          />
-          <ToolItem
-            icon={<CheckCircle />}
-            label="Disbursed"
-            onClick={() => setActiveView("disbursed")}
-          />
+          <ToolItem icon={<Users />} label="All Clients" onClick={() => setActiveView("clients")} />
+          <ToolItem icon={<FileText />} label="All Leads" onClick={() => setActiveView("all-leads")} />
+          <ToolItem icon={<TrendingUp />} label="Pending Leads" onClick={() => setActiveView("pending")} />
+          <ToolItem icon={<Target />} label="Targets" onClick={() => setActiveView("targets")} />
+          <ToolItem icon={<CheckCircle />} label="Disbursed" onClick={() => setActiveView("disbursed")} />
         </div>
       </div>
 
-      {/* Dynamic Views */}
+      {/* --- DYNAMIC VIEWS --- */}
       {activeView !== "dashboard" && (
         <div className="animate-in slide-in-from-right duration-300 mt-6 w-full max-w-5xl mx-auto">
           <button
@@ -229,26 +172,22 @@ const AdminDashboard = () => {
                 activeView === "pending"
                   ? leads.filter((l) => l.status === "NEW LEAD")
                   : activeView === "disbursed"
-                    ? leads.filter((l) => l.status === "Disbursed")
-                    : leads
+                  ? leads.filter((l) => l.status === "Disbursed")
+                  : leads
               }
               onUpdate={fetchAdminStats}
+              onDownload={handleDownload} // pass download handler
             />
           )}
 
-          {/* Clients List */}
+          {/* Clients */}
           {activeView === "clients" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {clients.map((client) => (
-                <div
-                  key={client._id}
-                  className="p-4 border rounded-xl bg-gray-50"
-                >
+                <div key={client._id} className="p-4 border rounded-xl bg-gray-50">
                   <h4 className="font-bold">{client.name}</h4>
                   <p className="text-sm text-gray-600">Email: {client.email}</p>
-                  <p className="text-sm text-gray-600">
-                    Mobile: {client.mobileNumber}
-                  </p>
+                  <p className="text-sm text-gray-600">Mobile: {client.mobileNumber}</p>
                 </div>
               ))}
             </div>
@@ -258,10 +197,7 @@ const AdminDashboard = () => {
           {activeView === "targets" && (
             <div className="space-y-4">
               {clients.map((client) => (
-                <div
-                  key={client._id}
-                  className="p-4 border rounded-xl bg-gray-50"
-                >
+                <div key={client._id} className="p-4 border rounded-xl bg-gray-50">
                   <h4 className="font-bold">{client.name}</h4>
                   <div className="flex flex-wrap gap-2 mt-2 items-center">
                     <input
@@ -279,86 +215,41 @@ const AdminDashboard = () => {
                       }
                       value={targetProgress[client._id]?.targetAmount || ""}
                     />
-
                     <select
-                      value={
-                        targetProgress[client._id]?.month ||
-                        new Date().getMonth() + 1
-                      }
+                      value={targetProgress[client._id]?.month || new Date().getMonth() + 1}
                       onChange={(e) =>
                         setTargetProgress((prev) => ({
                           ...prev,
-                          [client._id]: {
-                            ...prev[client._id],
-                            month: Number(e.target.value),
-                          },
+                          [client._id]: { ...prev[client._id], month: Number(e.target.value) },
                         }))
                       }
                       className="py-1 px-2 border rounded-lg text-sm"
                     >
                       {Array.from({ length: 12 }, (_, i) => (
                         <option key={i + 1} value={i + 1}>
-                          {new Date(0, i).toLocaleString("default", {
-                            month: "long",
-                          })}
+                          {new Date(0, i).toLocaleString("default", { month: "long" })}
                         </option>
                       ))}
                     </select>
-
                     <input
                       type="number"
                       placeholder="Year"
-                      value={
-                        targetProgress[client._id]?.year ||
-                        new Date().getFullYear()
-                      }
+                      value={targetProgress[client._id]?.year || new Date().getFullYear()}
                       onChange={(e) =>
                         setTargetProgress((prev) => ({
                           ...prev,
-                          [client._id]: {
-                            ...prev[client._id],
-                            year: Number(e.target.value),
-                          },
+                          [client._id]: { ...prev[client._id], year: Number(e.target.value) },
                         }))
                       }
                       className="py-1 px-2 border rounded-lg w-24 text-sm"
                     />
-
-                    <button
-                      onClick={() =>
-                        handleSetTarget(
-                          client._id,
-                          targetProgress[client._id]?.targetAmount,
-                          targetProgress[client._id]?.month,
-                          targetProgress[client._id]?.year,
-                        )
-                      }
-                      className="py-1 px-3 bg-blue-600 text-white rounded-lg text-sm"
-                    >
-                      Set Target
-                    </button>
-
-                    <button
-                      onClick={() => fetchTargetProgress(client._id)}
-                      className="py-1 px-3 bg-green-600 text-white rounded-lg text-sm"
-                    >
-                      View Progress
-                    </button>
                   </div>
 
                   {targetProgress[client._id] && (
                     <div className="mt-2 text-sm space-y-1">
-                      <div>
-                        Target: ₹{targetProgress[client._id]?.targetAmount || 0}
-                      </div>
-                      <div>
-                        Completed: ₹
-                        {targetProgress[client._id]?.completedAmount || 0}
-                      </div>
-                      <div>
-                        Remaining: ₹
-                        {targetProgress[client._id]?.remainingAmount || 0}
-                      </div>
+                      <div>Target: ₹{targetProgress[client._id]?.targetAmount || 0}</div>
+                      <div>Completed: ₹{targetProgress[client._id]?.completedAmount || 0}</div>
+                      <div>Remaining: ₹{targetProgress[client._id]?.remainingAmount || 0}</div>
                     </div>
                   )}
                 </div>
@@ -385,7 +276,9 @@ const StatCard = ({ label, value, icon, color }) => {
     >
       <div>
         <p
-          className={`text-[9px] font-black uppercase tracking-[0.2em] mb-1 ${color === "indigo" ? "text-blue-300" : "text-gray-400"}`}
+          className={`text-[9px] font-black uppercase tracking-[0.2em] mb-1 ${
+            color === "indigo" ? "text-blue-300" : "text-gray-400"
+          }`}
         >
           {label}
         </p>
