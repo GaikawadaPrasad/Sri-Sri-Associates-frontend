@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api/axiosInstance';
 import { 
   ArrowLeft, Phone, User, FileText, Download, 
-  MapPin, Landmark, Car, ShieldCheck, Clipboard 
+  MapPin, Landmark, Car, ShieldCheck, Clipboard,
+  Calendar, IndianRupee, ExternalLink
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -18,7 +19,6 @@ const LeadDetailsView = () => {
       try {
         const { data } = await API.get(`/leads/${id}`);
         setLead(data.data);
-        toast.success("Application details loaded");
       } catch (err) {
         toast.error("Error fetching application details");
         console.error("Error fetching lead details", err);
@@ -29,161 +29,153 @@ const LeadDetailsView = () => {
     fetchLead();
   }, [id]);
 
-  if (loading) return <div className="p-20 text-center font-black uppercase tracking-widest text-slate-400">Loading Application...</div>;
-  if (!lead) return <div className="p-20 text-center">Lead not found.</div>;
-
-  // Important: Convert Mongoose Map to a standard JS Object for easier access
-  const details = lead.loanDetails || {};
-
-  const renderTypeSpecificDetails = () => {
-    switch (lead.loanType) {
-      case "Home Loan":
-      case "LAP Loan":
-        return (
-          <>
-            <InfoBox label="Property Type" value={details.documentType} icon={<Landmark size={14}/>} />
-            <InfoBox label="Area Size" value={details.sqFt ? `${details.sqFt} Sq. Ft` : '—'} icon={<MapPin size={14}/>} />
-            <InfoBox label="Location" value={details.area} />
-            <InfoBox label="Market Value" value={details.houseValue ? `₹${Number(details.houseValue).toLocaleString('en-IN')}` : '—'} />
-          </>
-        );
-      case "Personal Loan":
-        return (
-          <>
-            <InfoBox label="ID Proof Type" value={details.documentType} />
-            <InfoBox label="Monthly Income" value={details.income ? `₹${Number(details.income).toLocaleString('en-IN')}` : '—'} />
-            <div className="col-span-2">
-              <InfoBox label="Residence Address" value={details.residence} />
-            </div>
-          </>
-        );
-      case "Business Loan":
-        return (
-          <>
-            <InfoBox label="Business Type" value={details.businessType} />
-            <InfoBox label="Annual Turnover" value={details.income ? `₹${Number(details.income).toLocaleString('en-IN')}` : '—'} />
-            <InfoBox label="ITR/GST" value={details.hasITR?.toUpperCase()} />
-            <InfoBox label="Labour License" value={details.hasLabourLicense?.toUpperCase()} />
-            <InfoBox label="Business Address" value={details.residence} />
-          </>
-        );
-      case "Vehicle Loan":
-        return (
-          <>
-            <InfoBox label="Vehicle Category" value={details.vehicleType} icon={<Car size={14}/>} />
-            <InfoBox label="Model & Year" value={details.vehicleModel} />
-            <InfoBox label="Vehicle Number" value={details.vehicleNumber} />
-            <InfoBox label="Agriculture Use" value={details.isAgriculture?.toUpperCase()} />
-          </>
-        );
-      default:
-        return <p className="text-xs text-gray-400">Standard lead details apply.</p>;
-    }
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard");
   };
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFF] pb-20">
-      {/* Header */}
-      <div className="bg-white p-6 sticky top-0 z-30 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-xl transition">
-            <ArrowLeft size={24} className="text-slate-800" />
-          </button>
-          <div>
-            <h1 className="text-xl font-black text-slate-800 uppercase tracking-tight">Application Detail</h1>
-            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{lead.loanType}</p>
-          </div>
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <div className="animate-pulse flex flex-col items-center gap-4">
+        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+          <Clipboard className="text-blue-600 animate-bounce" size={24} />
         </div>
+        <p className="font-black uppercase tracking-widest text-slate-400 text-xs">Loading Application...</p>
       </div>
+    </div>
+  );
 
-      <div className="max-w-5xl mx-auto mt-8 px-4 space-y-6">
-        {/* Profile Card */}
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-slate-900 rounded-4xl flex items-center justify-center text-white text-3xl font-black uppercase">
-              {lead.customerName?.charAt(0)}
-            </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-black text-slate-900 uppercase">{lead.customerName}</h2>
-                <StatusBadge status={lead.status} />
-              </div>
-              <p className="text-xs font-bold text-gray-400 uppercase mt-1">Lead ID: {lead._id.slice(-8).toUpperCase()}</p>
-              <p className="text-xs font-bold text-slate-500 mt-1 flex items-center gap-1">
-                <User size={12} className="text-blue-500" /> Agent: {lead.client?.name || 'In-House'}
-              </p>
-            </div>
-          </div>
-          <a href={`tel:${lead.mobileNumber}`} className="flex items-center gap-3 bg-green-500 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-green-100 hover:scale-105 transition">
-            <Phone size={18} fill="white" /> Call Customer
-          </a>
-        </div>
+  if (!lead) return <div className="p-20 text-center">Lead not found.</div>;
 
-        {/* Data Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-8">
-                <Clipboard className="text-blue-600" size={18} />
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">Loan Requirements</h4>
+  // Since we use Cloudinary, documents now have a direct 'url' property
+  const documents = lead.documents || [];
+
+  return (
+    <div className="max-w-5xl mx-auto p-4 md:p-8 animate-in fade-in duration-500">
+      {/* Header Navigation */}
+      <button 
+        onClick={() => navigate(-1)}
+        className="mb-8 flex items-center gap-2 text-gray-400 hover:text-slate-900 transition-colors group"
+      >
+        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+        <span className="text-[10px] font-black uppercase tracking-widest">Back to Dashboard</span>
+      </button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left Column: Primary Details */}
+        <div className="lg:col-span-2 space-y-8">
+          <section className="bg-white rounded-3xl border border-gray-100 p-6 md:p-10 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
+                    {lead.customerName}
+                  </h1>
+                  <StatusBadge status={lead.status} />
+                </div>
+                <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">{lead.loanType}</p>
               </div>
-              <div className="grid grid-cols-2 gap-y-10">
-                <InfoBox label="Mobile Number" value={lead.mobileNumber} />
-                <InfoBox label="Requested Amount" value={lead.loanAmount ? `₹${Number(lead.loanAmount).toLocaleString('en-IN')}` : '—'} color="text-blue-600" />
-                {renderTypeSpecificDetails()}
+              
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => copyToClipboard(lead.mobileNumber)}
+                  className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-blue-600 transition-all flex items-center gap-3"
+                >
+                  <Phone size={18} />
+                  <span className="font-black text-xs uppercase">{lead.mobileNumber}</span>
+                </button>
               </div>
             </div>
 
-            {/* Handle both field names used in your logic */}
-            {(lead.loanDetails?.moreDetails || lead.remarks) && (
-              <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Additional Remarks</h4>
-                <p className="text-sm text-slate-600 font-medium leading-relaxed bg-gray-50 p-6 rounded-2xl italic">
-                  "{lead.loanDetails?.moreDetails || lead.remarks}"
-                </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-y-10 gap-x-6 border-t border-gray-50 pt-10">
+              <InfoBox label="Loan Amount" value={`₹${lead.loanAmount?.toLocaleString('en-IN')}`} icon={<IndianRupee size={16}/>} color="text-blue-600" />
+              <InfoBox label="Application ID" value={lead._id.slice(-8).toUpperCase()} icon={<Clipboard size={16}/>} />
+              <InfoBox label="Date Submitted" value={new Date(lead.createdAt).toLocaleDateString()} icon={<Calendar size={16}/>} />
+              
+              {/* Dynamic Loan Details based on Backend Map */}
+              {Object.entries(lead.loanDetails || {}).map(([key, val]) => (
+                <InfoBox 
+                  key={key} 
+                  label={key.replace(/([A-Z])/g, ' $1').trim()} 
+                  value={val} 
+                  icon={<ShieldCheck size={16}/>} 
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* Document Section */}
+          <section>
+            <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-2">Verified Documents</h2>
+            {documents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {documents.map((doc, idx) => (
+                  <DocLink key={idx} name={doc.name} url={doc.url} />
+                ))}
+              </div>
+            ) : (
+              <div className="p-10 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100 text-center">
+                <p className="text-[10px] font-black text-gray-400 uppercase">No documents uploaded for this application</p>
               </div>
             )}
-          </div>
+          </section>
+        </div>
 
-          {/* Documents Sidebar */}
-          <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm h-fit">
-            <div className="flex items-center gap-2 mb-8">
-              <ShieldCheck className="text-purple-600" size={18} />
-              <h4 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">Documents</h4>
-            </div>
-            <div className="space-y-3">
-              {lead.documents && lead.documents.length > 0 ? (
-                lead.documents.map((doc, idx) => (
-                  <DocLink key={idx} name={doc.fileName || `Document ${idx + 1}`} url={doc.url} />
-                ))
-              ) : (
-                <p className="text-center py-10 text-[10px] font-black text-gray-300 uppercase">No Files Found</p>
-              )}
+        {/* Right Column: Sidebar Stats/Info */}
+        <div className="space-y-6">
+          <div className="bg-[#0A1D37] rounded-3xl p-8 text-white shadow-xl shadow-blue-900/10">
+            <h3 className="text-[10px] font-black text-blue-300 uppercase tracking-widest mb-6">Agent Information</h3>
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center font-black text-blue-400">
+                  {lead.client?.name?.charAt(0) || 'A'}
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase">{lead.client?.name || 'Admin'}</p>
+                  <p className="text-[10px] text-gray-400 font-bold">{lead.client?.email}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
 };
 
+/* --- SUBCOMPONENTS --- */
+
 const InfoBox = ({ label, value, icon, color = "text-slate-800" }) => (
   <div>
-    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1.5">{label}</p>
+    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2">{label}</p>
     <div className="flex items-center gap-2">
-      {icon && <span className="text-blue-500">{icon}</span>}
-      <p className={`text-sm font-black uppercase ${color}`}>{value || '—'}</p>
+      {icon && <span className="text-blue-500/50">{icon}</span>}
+      <p className={`text-sm font-black uppercase truncate ${color}`}>{value || '—'}</p>
     </div>
   </div>
 );
 
 const DocLink = ({ name, url }) => (
-  <a href={url} target="_blank" rel="noreferrer" className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl group hover:bg-slate-900 transition-all">
-    <div className="flex items-center gap-3">
-      <FileText size={18} className="text-gray-400 group-hover:text-blue-400" />
-      <span className="text-[10px] font-black text-gray-500 group-hover:text-white uppercase truncate max-w-30">{name}</span>
+  <a 
+    href={url} 
+    target="_blank" 
+    rel="noreferrer" 
+    className="flex items-center justify-between p-5 bg-white border border-gray-100 rounded-2xl group hover:bg-slate-900 hover:border-slate-900 transition-all shadow-sm"
+  >
+    <div className="flex items-center gap-4">
+      <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-white/10 transition-colors">
+        <FileText size={20} className="text-blue-600 group-hover:text-blue-400" />
+      </div>
+      <div>
+        <span className="block text-[10px] font-black text-slate-900 group-hover:text-white uppercase truncate max-w-[150px]">
+          {name}
+        </span>
+        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">View Resource</span>
+      </div>
     </div>
-    <Download size={16} className="text-gray-400 group-hover:text-white" />
+    <ExternalLink size={16} className="text-gray-300 group-hover:text-white" />
   </a>
 );
 
@@ -194,8 +186,9 @@ const StatusBadge = ({ status }) => {
     'Disbursed': 'bg-green-100 text-green-700 border-green-200',
     'Rejected': 'bg-red-100 text-red-700 border-red-200',
   };
+
   return (
-    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${colors[status] || 'bg-gray-100'}`}>
+    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${colors[status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
       {status}
     </span>
   );

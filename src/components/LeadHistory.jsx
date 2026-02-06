@@ -76,7 +76,7 @@ const LeadHistory = ({ leads, onLeadClick, onEditClick }) => {
                       return;
                     };
                     onEditClick(lead);
-                    toast.info("Editing lead details");
+                    toast.success("Editing lead details");
                   }}
                   className="p-2.5 bg-gray-50 text-gray-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all active:scale-95"
                   title="Edit Lead"
