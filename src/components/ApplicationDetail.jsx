@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import API from "../api/axiosInstance";
-import { X, Phone, User, FileText, CheckCircle2, Download } from "lucide-react";
+import {
+  X,
+  Phone,
+  User,
+  FileText,
+  CheckCircle2,
+  Download,
+  Eye,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
@@ -9,24 +17,74 @@ const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
   if (!lead) return null;
 
   const statusOptions = [
-    { label: "New Lead", value: "NEW LEAD", color: "bg-amber-100 text-amber-700" },
-    { label: "Approved", value: "Approved", color: "bg-blue-100 text-blue-700" },
-    { label: "Disbursed", value: "Disbursed", color: "bg-green-100 text-green-700" },
+    {
+      label: "New Lead",
+      value: "NEW LEAD",
+      color: "bg-amber-100 text-amber-700",
+    },
+    {
+      label: "Approved",
+      value: "Approved",
+      color: "bg-blue-100 text-blue-700",
+    },
+    {
+      label: "Disbursed",
+      value: "Disbursed",
+      color: "bg-green-100 text-green-700",
+    },
     { label: "Rejected", value: "Rejected", color: "bg-red-100 text-red-700" },
   ];
 
-  // ✅ Updated download function: direct download from Cloudinary
-  const handleDownload = (url, name) => {
-    if (!url) return toast.error("No file URL found");
+  const leadStatusOption = statusOptions.find(
+    (opt) => opt.value === lead.status,
+  );
+  const badgeColor = leadStatusOption?.color || "bg-gray-100";
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", name || "file.pdf");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+  // const handleDownload = async (doc) => {
+  //   if (!doc || !doc.url) return toast.error("File URL not found");
 
-    toast.success("Download started");
+  //   const loadingToast = toast.loading("Preparing download...");
+  //   try {
+  //     const response = await fetch(doc.url);
+  //     if (!response.ok) throw new Error("Network response was not ok");
+
+  //     const blob = await response.blob();
+  //     const url = window.URL.createObjectURL(blob);
+
+  //     const link = document.createElement("a");
+  //     link.href = url;
+  //     link.setAttribute("download", doc.fileName || "document.pdf");
+  //     document.body.appendChild(link);
+  //     link.click();
+
+  //     link.parentNode.removeChild(link);
+  //     window.URL.revokeObjectURL(url);
+  //     toast.success("Download started", { id: loadingToast });
+  //   } catch (error) {
+  //     console.error("Download error:", error);
+  //     toast.error("Failed to download. Opening in new tab instead.", { id: loadingToast });
+  //     window.open(doc.url, "_blank");
+  //   }
+  // };
+
+  // Updated handler in ApplicationDetail.jsx
+  const handleFileAction = (doc, mode = "preview") => {
+    if (doc && doc.url) {
+      let finalUrl = doc.url;
+
+      if (mode === "download") {
+        // Force download by adding the attachment flag
+        if (finalUrl.includes("upload/")) {
+          finalUrl = finalUrl.replace("upload/", "upload/fl_attachment/");
+        }
+      }
+
+      // Open in new tab
+      // For 'preview', it displays; for 'download' (with flag), it downloads
+      window.open(finalUrl, "_blank", "noopener,noreferrer");
+    } else {
+      toast.error("File not found");
+    }
   };
 
   const handleStatusChange = async (newStatus) => {
@@ -51,6 +109,7 @@ const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
         <div className="bg-white p-6 flex justify-between items-center border-b border-gray-100 sticky top-0 z-10">
           <button
             onClick={onClose}
+            aria-label="Close modal"
             className="p-2 hover:bg-gray-100 rounded-full transition"
           >
             <X size={24} className="text-gray-500" />
@@ -70,9 +129,7 @@ const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
               </div>
               <div className="flex-1">
                 <span
-                  className={`px-3 py-1 text-[9px] font-black uppercase rounded-full ${
-                    statusOptions.find((opt) => opt.value === lead.status)?.color || "bg-gray-100"
-                  }`}
+                  className={`px-3 py-1 text-[9px] font-black uppercase rounded-full ${badgeColor}`}
                 >
                   {lead.status === "NEW LEAD" ? "New Lead" : lead.status}
                 </span>
@@ -92,51 +149,7 @@ const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
             </div>
           </div>
 
-          {/* Attachments Section */}
-          <div className="mx-5 mb-5 bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-            <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">
-              Documents
-            </h4>
-            {lead.documents && lead.documents.length > 0 ? (
-              <div className="space-y-2">
-                {lead.documents.map((doc, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-white rounded-xl text-blue-600 shadow-sm">
-                        <FileText size={18} />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-600 truncate max-w-[180px]">
-                          {doc.name || `Document ${index + 1}`}
-                        </p>
-                        <p className="text-[8px] text-gray-400 font-medium">
-                          {doc.uploadedAt
-                            ? new Date(doc.uploadedAt).toLocaleDateString()
-                            : "Recently Uploaded"}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleDownload(doc.url, doc.name)}
-                      className="p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition-all shadow-md active:scale-95"
-                      title="View/Download"
-                    >
-                      <Download size={14} />
-                    </button>
-                  </div>    
-                ))}
-              </div>
-            ) : (
-              <p className="text-center py-4 text-[10px] font-bold text-gray-400 uppercase">
-                No documents found
-              </p>
-            )}
-          </div>
-
-          {/* Status Update */}
+          {/* Status Update Section */}
           <div className="mx-5 mb-5 p-5 bg-slate-900 rounded-3xl shadow-xl">
             <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest text-center mb-4">
               Admin Controls
@@ -160,23 +173,165 @@ const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
             </div>
           </div>
 
-          {/* Details Overview */}
+          {/* Dynamic Details Overview */}
           <div className="mx-5 bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
             <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-              <DetailItem label="Loan Type" value={lead.loanType} />
+              {/* Common Fields for ALL Loans */}
+              <DetailItem label="Customer Name" value={lead.customerName} />
+              <DetailItem label="Mobile Number" value={lead.mobileNumber} />
+              <DetailItem label="Mobile" value={lead.mobileNumber} />
               <DetailItem
-                label="Amount"
+                label="Required Amount"
                 value={`₹${lead.loanAmount?.toLocaleString("en-IN")}`}
               />
-              <DetailItem label="PAN" value={lead.panNumber} />
               <DetailItem
-                label="District"
-                value={lead.loanDetails?.district || lead.district}
+                label="Loan ID"
+                value={lead._id?.toString().slice(-6).toUpperCase()}
               />
-              <DetailItem
-                label="State"
-                value={lead.loanDetails?.state || lead.state}
-              />
+
+              {/* Dynamic Fields based on Loan Type */}
+
+              {lead.loanType === "Vehicle Insurance" && (
+                <>
+                  <DetailItem
+                    label="Vehicle Type"
+                    value={lead.loanDetails?.vehicleType}
+                  />
+                  <DetailItem
+                    label="Vehicle Model"
+                    value={lead.loanDetails?.vehicleModel}
+                  />
+                  <DetailItem label="Year" value={lead.loanDetails?.year} />
+                  <DetailItem
+                    label="IDV Value"
+                    value={
+                      lead.loanDetails?.idv
+                        ? `₹${Number(lead.loanDetails.idv).toLocaleString("en-IN")}`
+                        : "N/A"
+                    }
+                  />
+                  <DetailItem
+                    label="Vehicle Number"
+                    value={lead.loanDetails?.vehicleNumber}
+                  />
+                  <DetailItem
+                    label="Expiry Date"
+                    value={lead.loanDetails?.endDate}
+                  />
+                </>
+              )}
+
+              {(lead.loanType === "Home Loan" ||
+                lead.loanType === "LAP Loan") && (
+                <>
+                  <DetailItem
+                    label="Total Sq.Ft"
+                    value={lead.loanDetails?.sqFt || "N/A"}
+                  />
+                  <DetailItem
+                    label="Property Area"
+                    value={lead.loanDetails?.area || "N/A"}
+                  />
+                  <DetailItem
+                    label="Est. Market Value"
+                    value={
+                      lead.loanDetails?.houseValue
+                        ? `₹${Number(lead.loanDetails.houseValue).toLocaleString("en-IN")}`
+                        : "N/A"
+                    }
+                  />
+                </>
+              )}
+
+              {lead.loanType === "Personal Loan" && (
+                <>
+                  <DetailItem
+                    label="Income (M/A)"
+                    value={lead.loanDetails?.income || "N/A"}
+                  />
+                  <DetailItem
+                    label="Residence Status"
+                    value={lead.loanDetails?.residence || "N/A"}
+                  />
+                </>
+              )}
+
+              {lead.loanType === "Business Loan" && (
+                <>
+                  <DetailItem
+                    label="Income"
+                    value={lead.loanDetails?.income || "N/A"}
+                  />
+                  <DetailItem
+                    label="ITR/GST"
+                    value={lead.loanDetails?.itr_gst || "N/A"}
+                  />
+                </>
+              )}
+
+              {lead.loanType === "Other Loan Types" && (
+                <div className="col-span-2">
+                  <DetailItem
+                    label="Loan Description"
+                    value={lead.loanDetails?.additionalDetails}
+                  />
+                </div>
+              )}
+
+              {/* Always show Remarks if they exist */}
+              <div className="col-span-2">
+                <DetailItem
+                  label="Additional Remarks"
+                  value={lead.remarks || "No remarks provided"}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Documents Section */}
+          <div className="mx-5 mt-6">
+            <h4 className="text-[10px] font-black text-gray-400 uppercase mb-3 px-2">
+              Attached Documents ({lead.documents?.length || 0})
+            </h4>
+            <div className="grid grid-cols-1 gap-2">
+              {lead.documents && lead.documents.length > 0 ? (
+                lead.documents.map((doc, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                        <FileText size={16} />
+                      </div>
+                      <span className="text-[11px] font-bold text-gray-700 truncate max-w-[180px]">
+                        {doc.fileName || `Document ${index + 1}`}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      {/* PREVIEW BUTTON */}
+                      <button
+                        onClick={() => handleFileAction(doc, "preview")}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 px-2 bg-white text-blue-600 text-[11px] font-bold rounded-xl border border-blue-100 hover:bg-blue-50 transition-all"
+                      >
+                        <Eye size={14} /> Preview
+                      </button>
+
+                      {/* DOWNLOAD BUTTON */}
+                      <button
+                        onClick={() => handleFileAction(doc, "download")}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 px-2 bg-blue-600 text-white text-[11px] font-bold rounded-xl hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all"
+                      >
+                        <Download size={14} /> Download
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-gray-400 text-center py-4 italic">
+                  No documents uploaded
+                </p>
+              )}
             </div>
           </div>
         </div>

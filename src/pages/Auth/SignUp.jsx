@@ -35,6 +35,10 @@ const Signup = () => {
         password: formData.password,
         role: 'CLIENT' 
       });
+
+      toast.success('Request sent! Please wait for Admin approval before logging in.', {
+    duration: 6000,
+  });
       
       navigate('/login');
       toast.success('Registration successful! Please login.');

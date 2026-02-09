@@ -11,7 +11,8 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login } = useContext(AuthContext);
+  const { login , user } = useContext(AuthContext);
+  console.log("CURRENT USER IN LOGIN.JSX:" , user);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
