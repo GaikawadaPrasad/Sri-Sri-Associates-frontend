@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import API from "../api/axiosInstance";
 import {
   X,
@@ -10,11 +10,21 @@ import {
   Eye,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { AuthContext } from "../context/AuthContext";
 
 const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
   const [updating, setUpdating] = useState(false);
+  const [renewing, setRenewing] = useState(false);
+  const [newExpiry, setNewExpiry] = useState("");
+
+  const { user } = useContext(AuthContext);
 
   if (!lead) return null;
+
+  const isExpired =
+    lead.loanType === "Vehicle Insurance" &&
+    lead.loanDetails?.endDate &&
+    new Date(lead.loanDetails.endDate) < new Date();
 
   const statusOptions = [
     {
@@ -40,47 +50,18 @@ const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
   );
   const badgeColor = leadStatusOption?.color || "bg-gray-100";
 
-  // const handleDownload = async (doc) => {
-  //   if (!doc || !doc.url) return toast.error("File URL not found");
-
-  //   const loadingToast = toast.loading("Preparing download...");
-  //   try {
-  //     const response = await fetch(doc.url);
-  //     if (!response.ok) throw new Error("Network response was not ok");
-
-  //     const blob = await response.blob();
-  //     const url = window.URL.createObjectURL(blob);
-
-  //     const link = document.createElement("a");
-  //     link.href = url;
-  //     link.setAttribute("download", doc.fileName || "document.pdf");
-  //     document.body.appendChild(link);
-  //     link.click();
-
-  //     link.parentNode.removeChild(link);
-  //     window.URL.revokeObjectURL(url);
-  //     toast.success("Download started", { id: loadingToast });
-  //   } catch (error) {
-  //     console.error("Download error:", error);
-  //     toast.error("Failed to download. Opening in new tab instead.", { id: loadingToast });
-  //     window.open(doc.url, "_blank");
-  //   }
-  // };
-
-  // Updated handler in ApplicationDetail.jsx
   const handleFileAction = (doc, mode = "preview") => {
     if (doc && doc.url) {
       let finalUrl = doc.url;
 
       if (mode === "download") {
-        // Force download by adding the attachment flag
         if (finalUrl.includes("upload/")) {
           finalUrl = finalUrl.replace("upload/", "upload/fl_attachment/");
+        } else {
+          window.open(doc.url, "_blank", "noopener,noreferrer");
         }
       }
 
-      // Open in new tab
-      // For 'preview', it displays; for 'download' (with flag), it downloads
       window.open(finalUrl, "_blank", "noopener,noreferrer");
     } else {
       toast.error("File not found");
@@ -101,6 +82,34 @@ const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
       setUpdating(false);
     }
   };
+
+  const handleRenewPolicy = async () => {
+    if (!newExpiry) {
+      toast.error("Please select new expiry date");
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      await API.put(`/leads/admin-update/${lead._id}`, {
+        loanDetails: {
+          endDate: newExpiry,
+        },
+        status: "Approved",
+      });
+
+      toast.success("Insurance renewed successfully");
+      if (onUpdate) onUpdate();
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to renew policy");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const role = user?.role;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0A1D37]/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-6">
@@ -188,36 +197,100 @@ const ApplicationDetail = ({ lead, onClose, onUpdate }) => {
                 label="Loan ID"
                 value={lead._id?.toString().slice(-6).toUpperCase()}
               />
-
-              {/* Dynamic Fields based on Loan Type */}
+              <DetailItem
+                label="Document Type"
+                value={lead.loanDetails?.docType || "N/A"}
+              />
 
               {lead.loanType === "Vehicle Insurance" && (
                 <>
+                  {" "}
                   <DetailItem
-                    label="Vehicle Type"
-                    value={lead.loanDetails?.vehicleType}
+                    label="Insurance Provider"
+                    value={lead.loanDetails?.insuranceProvider || "N/A"}
                   />
                   <DetailItem
-                    label="Vehicle Model"
-                    value={lead.loanDetails?.vehicleModel}
-                  />
-                  <DetailItem label="Year" value={lead.loanDetails?.year} />
-                  <DetailItem
-                    label="IDV Value"
-                    value={
-                      lead.loanDetails?.idv
-                        ? `₹${Number(lead.loanDetails.idv).toLocaleString("en-IN")}`
-                        : "N/A"
-                    }
+                    label="Policy Number"
+                    value={lead.loanDetails?.policyNumber || "N/A"}
                   />
                   <DetailItem
-                    label="Vehicle Number"
-                    value={lead.loanDetails?.vehicleNumber}
+                    label="Coverage Type"
+                    value={lead.loanDetails?.coverageType || "N/A"}
                   />
                   <DetailItem
-                    label="Expiry Date"
-                    value={lead.loanDetails?.endDate}
+                    label="Start Date"
+                    value={lead.loanDetails?.startDate || "N/A"}
                   />
+                  <DetailItem
+                    label="End Date"
+                    value={lead.loanDetails?.endDate || "N/A"}
+                  />
+                  <div className="mx-5 mb-5 p-5 bg-emerald-600 rounded-3xl shadow-xl">
+                    <p className="text-[9px] font-black text-emerald-100 uppercase tracking-widest text-center mb-4">
+                      Insurance Renewal
+                    </p>
+
+                    {!renewing ? (
+                      role === "ADMIN" ? (
+                        <button
+                          onClick={() => setRenewing(true)}
+                          className="w-full py-3 bg-white text-emerald-700 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all"
+                        >
+                          Renew Policy
+                        </button>
+                      ) : null
+                    ) : (
+                      <>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-[9px] font-black text-emerald-100 uppercase mb-1">
+                              New Expiry Date
+                            </label>
+                            <input
+                              type="date"
+                              value={newExpiry}
+                              onChange={(e) => setNewExpiry(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-800"
+                            />
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setRenewing(false)}
+                              className="flex-1 py-3 bg-white/20 text-white rounded-xl font-black text-xs uppercase"
+                            >
+                              Cancel
+                            </button>
+
+                            <button
+                              onClick={handleRenewPolicy}
+                              disabled={updating}
+                              className="flex-1 py-3 bg-white text-emerald-700 rounded-xl font-black text-xs uppercase hover:bg-emerald-50 disabled:opacity-60"
+                            >
+                              Confirm Renew
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-[9px] font-bold text-emerald-100 uppercase tracking-widest mt-4">
+                            Current Expiry Date
+                          </p>
+                          <p className="text-xs font-black text-white uppercase">
+                            {lead.loanDetails?.endDate
+                              ? new Date(
+                                  lead.loanDetails.endDate,
+                                ).toLocaleDateString("en-IN", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : "N/A"}
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </>
               )}
 

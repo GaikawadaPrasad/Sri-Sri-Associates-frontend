@@ -7,7 +7,7 @@ const ProtectedRoute = ({ children, role }) => {
   const { user, loading } = useContext(AuthContext);
   const location = useLocation();
 
-    // console.log('ProtectedRoute - User:', user, 'Role Required:', role);
+    
   if (loading) {
     toast.info("Checking authentication...");
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

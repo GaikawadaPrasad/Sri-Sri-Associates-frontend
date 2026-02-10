@@ -26,9 +26,10 @@ import {
 } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const ClientDashboard = () => {
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const [activeView, setActiveView] = useState("dashboard");
   const [leads, setLeads] = useState([]);
   const [stats, setStats] = useState({
@@ -49,7 +50,13 @@ const ClientDashboard = () => {
   const [showLeaveModel, setShowLeaveModel] = useState(false);
   const [loanType, setLoanType] = useState("");
   const [formData, setFormData] = useState({});
+  const [searchQuery, setSearchQuery] = useState("");
 
+  const navigator = useNavigate();
+  const handleLogOut = () => {
+    logout();
+    navigator("/");
+  };
   const fetchAttendance = useCallback(async () => {
     try {
       const { data } = await API.get("/attendance/today");
@@ -127,62 +134,6 @@ const ClientDashboard = () => {
     setActiveView("edit");
   };
 
-  //  const handleAction = async (e) => {
-  //   e.preventDefault();
-  //   if (!loanType) return toast.error("Please select a loan type first");
-
-  //   setIsSubmitting(true);
-  //   const loadingToast = toast.loading(activeView === "add" ? "Creating Application..." : "Saving Changes...");
-
-  //   try {
-  //     const data = new FormData();
-  //     // Destructure to separate files and ID from text fields
-  //     const { id, newFiles, ...restOfFields } = formData;
-
-  //     // 1. Append basic fields
-  //     data.append("loanType", loanType);
-
-  //     // 2. Append all text-based fields (Name, Mobile, Loan Details)
-  //     Object.keys(restOfFields).forEach((key) => {
-  //       if (restOfFields[key] !== undefined && restOfFields[key] !== null) {
-  //         // If it's the loanDetails object, handle accordingly or just append string values
-  //         data.append(key, restOfFields[key]);
-  //       }
-  //     });
-
-  //     // 3. MULTIPLE DOCUMENTS LOGIC
-  //     // Loop through the newFiles array and append each one to the 'documents' key
-  //     if (newFiles && newFiles.length > 0) {
-  //       newFiles.forEach((file) => {
-  //         data.append("documents", file);
-  //       });
-  //     }
-
-  //     if (activeView === "add") {
-  //       await API.post("/leads/create", data, {
-  //         headers: { "Content-Type": "multipart/form-data" }
-  //       });
-  //       toast.success("Lead Created Successfully!", { id: loadingToast });
-  //     } else {
-  //       await API.put(`/leads/${id}`, data, {
-  //         headers: { "Content-Type": "multipart/form-data" }
-  //       });
-  //       toast.success("Application Updated Successfully!", { id: loadingToast });
-  //     }
-
-  //     // Cleanup and Refresh
-  //     await fetchDashboardData();
-  //     setActiveView("dashboard");
-  //     setFormData({});
-  //     setLoanType("");
-  //   } catch (err) {
-  //     console.error("Submission Error:", err);
-  //     toast.error(err.response?.data?.message || "Error submitting form", { id: loadingToast });
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
-
   const handleAction = async (e) => {
     e.preventDefault();
     if (!loanType) return toast.error("Please select a loan type first");
@@ -194,22 +145,20 @@ const ClientDashboard = () => {
 
     try {
       const data = new FormData();
-      // Destructure to separate special fields
+
       const { id, newFiles, ...restOfFields } = formData;
 
       data.append("loanType", loanType);
 
-      // Append all text fields
       Object.keys(restOfFields).forEach((key) => {
         if (restOfFields[key] !== undefined && restOfFields[key] !== null) {
           data.append(key, restOfFields[key]);
         }
       });
 
-      // Append Multiple Files
       if (newFiles && newFiles.length > 0) {
         newFiles.forEach((file) => {
-          data.append("documents", file); // Must match upload.array("documents")
+          data.append("documents", file);
         });
       }
 
@@ -232,7 +181,8 @@ const ClientDashboard = () => {
       setFormData({});
       setLoanType("");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Submission failed", {
+      console.error("Submission Error:", err);
+      toast.error(err.response?.data?.message || "Error submitting form", {
         id: loadingToast,
       });
     } finally {
@@ -244,6 +194,16 @@ const ClientDashboard = () => {
     (l) => l.loanType === "Vehicle Insurance",
   );
 
+  const filteredLeads = leads.filter((lead) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      lead.customerName?.toLowerCase().includes(query) ||
+      lead.mobileNumber?.includes(query) ||
+      lead.loanType?.toLowerCase().includes(query) ||
+      lead.loanDetails?.vehicleNumber?.toLowerCase().includes(query) ||
+      lead.loanDetails?.policyNumber?.toLowerCase().includes(query)
+    );
+  });
   return (
     <div className="bg-[#F8FAFF] min-h-screen pb-32 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -276,6 +236,14 @@ const ClientDashboard = () => {
               className="flex items-center gap-2 bg-[#050C25] text-white px-6 py-3 rounded-2xl shadow-lg font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
             >
               <Plus size={18} /> New Lead
+            </button>
+            <button
+              onClick={() => {
+                handleLogOut();
+              }}
+              className="flex items-center gap-2 bg-[#db0f0f] text-white px-6 py-3 rounded-2xl shadow-lg font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
+            >
+              <LogOut size={18} /> Log Out
             </button>
           </div>
         </header>
@@ -334,6 +302,7 @@ const ClientDashboard = () => {
         </div>
 
         {/* Dynamic Content Area */}
+
         {activeView === "dashboard" ? (
           <div className="mt-10 space-y-8">
             {/* Target Progress Bar */}
@@ -375,17 +344,26 @@ const ClientDashboard = () => {
             )}
 
             <div className="space-y-4">
-              <h3 className="font-black text-slate-900 flex items-center gap-2 text-xs uppercase tracking-widest">
-                <ShieldCheck className="text-blue-600" size={16} />
-                Vehicle Insurance Policies
-              </h3>
+              <div className="flex justify-between items-center">
+                <h3 className="font-black text-slate-900 flex items-center gap-2 text-xs uppercase tracking-widest">
+                  <ShieldCheck className="text-blue-600" size={16} />
+                  Vehicle Insurance Policies
+                </h3>
+                {insuranceLeads.length > 2 && (
+                  <span className="text-[10px] font-black text-gray-400 uppercase animate-pulse">
+                    Scroll for more →
+                  </span>
+                )}
+              </div>
 
               {insuranceLeads.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                /* Changed from grid to horizontal flex with overflow */
+                <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar snap-x">
                   {insuranceLeads.map((policy) => (
                     <div
                       key={policy._id}
-                      className="bg-white p-6 rounded-4xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                      /* Added min-w and flex-shrink-0 to prevent card squeezing */
+                      className="min-w-[280px] md:min-w-[350px] flex-shrink-0 bg-white p-6 rounded-4xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow snap-start"
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div>
@@ -398,34 +376,37 @@ const ClientDashboard = () => {
                           </h4>
                         </div>
                         <span
-                          className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${policy.status === "Approved" ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"}`}
+                          className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${
+                            policy.status === "Approved"
+                              ? "bg-green-50 text-green-600"
+                              : "bg-orange-50 text-orange-600"
+                          }`}
                         >
                           {policy.status}
                         </span>
                       </div>
+
                       <div className="grid grid-cols-2 gap-4 mb-4 text-[10px] font-bold text-gray-500 uppercase">
-                        <div>
-                          VIN:{" "}
-                          <span className="text-slate-900">
-                            {policy.loanDetails?.vin || "N/A"}
-                          </span>
-                        </div>
                         <div>
                           Exp:{" "}
                           <span className="text-slate-900">
                             {policy.loanDetails?.endDate || "N/A"}
                           </span>
                         </div>
+                        <div>
+                          Amount:{" "}
+                          <span className="text-slate-900">
+                            ₹{policy.loanAmount?.toLocaleString() || "0"}
+                          </span>
+                        </div>
                       </div>
+
                       <div className="flex gap-2">
                         <button
                           onClick={() => setSelectedLead(policy)}
                           className="flex-1 py-2 bg-slate-50 text-slate-900 rounded-xl font-black text-[9px] uppercase hover:bg-slate-100"
                         >
                           Details
-                        </button>
-                        <button className="flex-1 py-2 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase hover:bg-blue-700 shadow-sm">
-                          Renew Now
                         </button>
                       </div>
                     </div>
@@ -557,8 +538,42 @@ const ClientDashboard = () => {
                   View All
                 </button>
               </div>
+              {/* search input */}
+              <div className="mb-8 m-3 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <RefreshCcw
+                    className="text-gray-400 animate-spin-slow"
+                    size={18}
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search by name, mobile, vehicle number or policy..."
+                  className="w-full pl-12 pr-4 py-4 bg-white border border-gray-100 rounded-3xl shadow-sm text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-red-500"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
               <LeadHistory
-                leads={leads.slice(0, 5)}
+                leads={
+                  activeView === "unfinished"
+                    ? filteredLeads.filter((l) => !l.isFinished) // Use filteredLeads
+                    : activeView === "pending"
+                      ? filteredLeads.filter(
+                          (l) => l.isFinished && l.status !== "Disbursed",
+                        ) // Use filteredLeads
+                      : activeView === "disbursed"
+                        ? filteredLeads.filter((l) => l.status === "Disbursed") // Use filteredLeads
+                        : filteredLeads // Use filteredLeads
+                }
                 onLeadClick={setSelectedLead}
                 onEditClick={handleEditInit}
               />
@@ -718,17 +733,82 @@ const ClientDashboard = () => {
                       )}
 
                       {loanType === "Vehicle Insurance" && (
-                      <div className="bg-blue-50/50 rounded-3xl border border-blue-100 grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-                        <InputField label="Insurance Provider" value={formData.insuranceProvider || ""} onChange={(e) => setFormData({...formData, insuranceProvider: e.target.value})} />
-                        <InputField label="Policy Number" value={formData.policyNumber || ""} onChange={(e) => setFormData({...formData, policyNumber: e.target.value})} />
-                        <InputField label="VIN Number" value={formData.vin || ""} onChange={(e) => setFormData({...formData, vin: e.target.value})} />
-                        <InputField label="Vehicle Number" value={formData.vehicleNumber || ""} onChange={(e) => setFormData({...formData, vehicleNumber: e.target.value})} />
-                        <InputField label="Coverage Type" value={formData.coverageType || ""} onChange={(e) => setFormData({...formData, coverageType: e.target.value})} placeholder="Comprehensive/Third Party" />
-                        <InputField label="IDV Value" type="number" value={formData.idv || ""} onChange={(e) => setFormData({...formData, idv: e.target.value})} />
-                        <InputField label="Start Date" type="date" value={formData.startDate || ""} onChange={(e) => setFormData({...formData, startDate: e.target.value})} />
-                        <InputField label="End Date" type="date" value={formData.endDate || ""} onChange={(e) => setFormData({...formData, endDate: e.target.value})} />
-                      </div>
-                    )}
+                        <>
+                          <InputField
+                            label="Insurance Provider"
+                            value={formData.insuranceProvider || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                insuranceProvider: e.target.value,
+                              })
+                            }
+                          />
+                          <InputField
+                            label="Policy Number"
+                            value={formData.policyNumber || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                policyNumber: e.target.value,
+                              })
+                            }
+                          />
+                          <InputField
+                            label="Vehicle Number"
+                            value={formData.vehicleNumber || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                vehicleNumber: e.target.value,
+                              })
+                            }
+                          />
+                          <InputField
+                            label="Coverage Type"
+                            placeholder="e.g. Comprehensive"
+                            value={formData.coverageType || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                coverageType: e.target.value,
+                              })
+                            }
+                          />
+                          <InputField
+                            label="IDV Value"
+                            type="number"
+                            value={formData.idv || ""}
+                            onChange={(e) =>
+                              setFormData({ ...formData, idv: e.target.value })
+                            }
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <InputField
+                              label="Start Date"
+                              type="date"
+                              value={formData.startDate || ""}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  startDate: e.target.value,
+                                })
+                              }
+                            />
+                            <InputField
+                              label="End Date"
+                              type="date"
+                              value={formData.endDate || ""}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  endDate: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
 
                       {(loanType === "Personal Loan" ||
                         loanType === "Business Loan") && (
@@ -756,8 +836,6 @@ const ClientDashboard = () => {
                           />
                         </>
                       )}
-
-                      
 
                       {loanType === "Business Loan" && (
                         <>
@@ -889,8 +967,18 @@ const ClientDashboard = () => {
                   </div>
                 )}
                 {loanType === "Other Loan Types" && (
-                       <InputField label="Additional Details" value={formData.additionalDetails || ""} onChange={(e) => setFormData({...formData, additionalDetails: e.target.value})} placeholder="Specify loan purpose/details" />
-                    )}
+                  <InputField
+                    label="Additional Details"
+                    value={formData.additionalDetails || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        additionalDetails: e.target.value,
+                      })
+                    }
+                    placeholder="Specify loan purpose/details"
+                  />
+                )}
               </form>
             )}
 

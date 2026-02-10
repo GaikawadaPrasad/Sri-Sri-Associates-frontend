@@ -6,19 +6,18 @@ import {
   ArrowUpRight,
   FileText,
 } from "lucide-react";
-// import { useNavigate } from "react-router-dom";
+
 import API from "../api/axiosInstance";
 import toast from "react-hot-toast";
 
 const AdminLeadTable = ({ leads, onUpdate, onSelectLead, onDownload }) => {
-  // const navigate = useNavigate();
   const statusOptions = ["NEW LEAD", "Approved", "Disbursed", "Rejected"];
 
   const handleStatusChange = async (e, leadId, newStatus) => {
-    e.stopPropagation(); // Prevent navigation to details
+    e.stopPropagation();
     try {
       await API.patch(`/leads/${leadId}/status`, { status: newStatus });
-      if (onUpdate) onUpdate(); // Refresh the list
+      if (onUpdate) onUpdate();
       toast.success(`Status updated to ${newStatus}`);
     } catch (err) {
       toast.error("Failed to update status");
@@ -129,7 +128,7 @@ const AdminLeadTable = ({ leads, onUpdate, onSelectLead, onDownload }) => {
                           key={i}
                           title={doc.name}
                           onClick={(e) => {
-                            e.stopPropagation(); // ⛔ prevent opening lead detail
+                            e.stopPropagation();
                             onDownload(doc.url, doc.name);
                           }}
                           className="w-7 h-7 bg-white border border-gray-100 rounded-lg flex items-center justify-center text-blue-500 shadow-sm hover:bg-blue-50"
@@ -171,7 +170,6 @@ const AdminLeadTable = ({ leads, onUpdate, onSelectLead, onDownload }) => {
   );
 };
 
-/* HELPER FOR DYNAMIC STYLES */
 const StatusStyles = (status) => {
   const styles = {
     "NEW LEAD":

@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useContext } from "react";
 import API from "../../api/axiosInstance";
 import {
   FileText,
   CheckCircle,
   TrendingUp,
+  Search,
+  X,
   IndianRupee,
   Clock,
   Target,
@@ -17,6 +19,8 @@ import {
   Check,
   XCircle,
   UserMinus,
+  LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import AdminLeadTable from "../../components/AdminLeadTable";
 import TargetView from "../../components/TargetView";
@@ -24,6 +28,8 @@ import toast from "react-hot-toast";
 import ApplicationDetail from "../../components/ApplicationDetail";
 import ClientDetailView from "../../components/ClientDetailView";
 import ClientCard from "../../components/ClientCard";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../context/AuthContext";
 
 const AdminDashboard = () => {
   const [leads, setLeads] = useState([]);
@@ -34,16 +40,24 @@ const AdminDashboard = () => {
   const [selectedLead, setSelectedLead] = useState(null);
   const [activeView, setActiveView] = useState("dashboard");
   const [selectedClient, setSelectedClient] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [attendance, setAttendance] = useState([]);
-
   const [leaves, setLeaves] = useState([]);
-
   const [stats, setStats] = useState({
     totalCount: 0,
     pendingCount: 0,
     disbursedCount: 0,
     totalBusinessValue: 0,
   });
+
+  const { logout } = useContext(AuthContext);
+
+  const navigate = useNavigate();
+
+  const handleLogOut = () => {
+    logout();
+    navigate("/");
+  };
 
   const fetchPendingUsers = useCallback(async () => {
     try {
@@ -131,6 +145,47 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  const handleStatClick = (type) => {
+    setSelectedLead(null);
+
+    switch (type) {
+      case "TOTAL":
+        setLeadFilter("ALL");
+        setActiveView("dashboard");
+        break;
+
+      case "PENDING":
+        setLeadFilter("PENDING");
+        setActiveView("dashboard");
+        break;
+
+      case "DISBURSED":
+        setLeadFilter("DISBURSED");
+        setActiveView("dashboard");
+        break;
+
+      case "INSURANCE":
+        setLeadFilter("INSURANCE");
+        setActiveView("dashboard");
+        break;
+
+      case "LEAVES":
+        setActiveView("leaves");
+        break;
+
+      case "ATTENDANCE":
+        setActiveView("attendance");
+        break;
+
+      case "APPROVALS":
+        setActiveView("approvals");
+        break;
+
+      default:
+        break;
+    }
+  };
+
   useEffect(() => {
     fetchAdminData();
   }, [fetchAdminData]);
@@ -169,13 +224,6 @@ const AdminDashboard = () => {
     }
   };
 
-  /* ---------------- FILTERED LEADS ---------------- */
-  // const filteredLeads = leads.filter((lead) => {
-  //   if (leadFilter === "PENDING") return lead.status === "NEW LEAD";
-  //   if (leadFilter === "DISBURSED") return lead.status === "Disbursed";
-  //   return true;
-  // });
-
   if (loading && leads.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -183,22 +231,76 @@ const AdminDashboard = () => {
       </div>
     );
   }
+  const insuranceCount = leads.filter(
+    (l) => l.loanType === "Vehicle Insurance",
+  ).length;
+
+  const getFilteredLeads = () => {
+    switch (leadFilter) {
+      case "PENDING":
+        return leads.filter((l) => l.status === "NEW LEAD");
+      case "DISBURSED":
+        return leads.filter((l) => l.status === "Disbursed");
+      case "INSURANCE":
+        return leads.filter((l) => l.loanType === "Vehicle Insurance");
+      default:
+        return leads;
+    }
+  };
+
+  const filteredLeads = leads.filter((lead) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      lead.customerName?.toLowerCase().includes(query) ||
+      lead.mobileNumber?.includes(query) ||
+      lead.loanType?.toLowerCase().includes(query) ||
+      lead.status?.toLowerCase().includes(query)
+    );
+  });
 
   
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20">
+    <div className="min-h-screen bg-[#F8FAFC] font-sans pb-20">
       {/* Header */}
-      <div className="bg-white border-b px-8 py-6 mb-8">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-black uppercase">
-            Admin Command Center
-          </h1>
-          <button
-            onClick={fetchAdminData}
-            className="p-3 bg-gray-50 rounded-xl hover:text-blue-600"
-          >
-            <RefreshCcw size={18} />
-          </button>
+      <div className="flex flex-col md:flex-row justify-between  gap-6 py-8">
+        <div className="max-w-7xl mx-auto flex justify-between items-end w-full px-8  ">
+          <div>
+            <h1 className="text-3xl font-black text-[#0A1D37] tracking-tight uppercase">
+              Admin Command Center
+            </h1>
+            <p className="text-xs text-gray-400 font-black uppercase tracking-[0.2em] mt-1">
+              Sri Sri Associates • Admin Dashboard
+            </p>
+          </div>
+
+          <div className="flex items-end gap-3">
+            <button
+              onClick={fetchAdminData}
+              className="p-3 bg-gray-50 rounded-xl hover:text-blue-600"
+            >
+              <RefreshCcw size={18} />
+            </button>
+            <div className="flex  grow gap-3">
+              <div className="bg-white px-5 py-3 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+                <Clock className="text-blue-600" size={18} />
+                <span className="text-xs font-black text-slate-700 uppercase">
+                  {new Date().toLocaleDateString("en-IN", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                handleLogOut();
+              }}
+              className="flex items-center gap-2 bg-[#db0f0f] text-white px-6 py-3 rounded-2xl shadow-lg font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
+            >
+              <LogOut size={18} /> Log Out
+            </button>
+          </div>
         </div>
       </div>
 
@@ -209,15 +311,23 @@ const AdminDashboard = () => {
             onBack={() => setSelectedClient(null)}
           />
         ) : activeView === "clients" ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {clients.map((client) => (
-              <ClientCard
-                key={client._id}
-                client={client}
-                onView={() => setSelectedClient(client)} // Set the selected client here
-              />
-            ))}
-          </div>
+          <>
+            <button
+              onClick={() => setActiveView("dashboard")}
+              className="flex items-center gap-2 text-xs font-black mb-6"
+            >
+              <ArrowLeft size={16} /> Back to Dashboard
+            </button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {clients.map((client) => (
+                <ClientCard
+                  key={client._id}
+                  client={client}
+                  onView={() => setSelectedClient(client)} // Set the selected client here
+                />
+              ))}
+            </div>
+          </>
         ) : activeView === "dashboard" ? (
           <>
             {/* STATS */}
@@ -226,43 +336,56 @@ const AdminDashboard = () => {
                 label="Total Leads"
                 value={stats.totalCount}
                 icon={<FileText />}
+                onClick={() => handleStatClick("TOTAL")}
               />
 
               <StatCard
                 label="Leave Requests"
                 value={leaves.filter((l) => l.status === "Pending").length}
                 icon={<CalendarRange />}
-                onClick={() => setActiveView("leaves")}
+                onClick={() => handleStatClick("LEAVES")}
               />
 
               <StatCard
                 label="Approvals"
                 value={pendingUsers.length}
                 icon={<UserPlus />}
-                onClick={() => setActiveView("approvals")}
+                onClick={() => handleStatClick("APPROVALS")}
               />
+
               <StatCard
                 label="Pending"
                 value={stats.pendingCount}
                 icon={<Clock />}
+                onClick={() => handleStatClick("PENDING")}
               />
+
               <StatCard
                 label="Disbursed"
                 value={stats.disbursedCount}
                 icon={<CheckCircle />}
+                onClick={() => handleStatClick("DISBURSED")}
               />
+
               <StatCard
                 label="Business"
                 value={`₹${(stats.totalBusinessValue / 100000).toFixed(2)}L`}
                 icon={<IndianRupee />}
                 dark
               />
+
               <StatCard
                 label="Active Today"
                 value={attendance.filter((a) => a.status === "IN").length}
                 icon={<UserCheck />}
-                color="green"
-                onClick={() => setActiveView("attendance")}
+                onClick={() => handleStatClick("ATTENDANCE")}
+              />
+
+              <StatCard
+                label="Insurance"
+                value={insuranceCount}
+                icon={<ShieldCheck className="text-emerald-500" />}
+                onClick={() => handleStatClick("INSURANCE")}
               />
             </div>
 
@@ -325,12 +448,41 @@ const AdminDashboard = () => {
             </div>
 
             {/* TABLE */}
+            <div className="mb-6 relative max-w-xl">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search className="text-gray-400" size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder={
+                  activeView === "clients"
+                    ? "Search clients by name or mobile..."
+                    : "Search leads by customer name..."
+                }
+                className="w-full pl-12 pr-10 py-3 bg-white border border-gray-100 rounded-2xl shadow-sm text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-red-500"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
             <AdminLeadTable
-              leads={leads}
+              leads={filteredLeads.filter((l) =>
+                leadFilter === "ALL"
+                  ? true
+                  : l.status.toUpperCase() === leadFilter,
+              )}
               onUpdate={fetchAdminData}
               onDownload={handleDownload}
               onSelectLead={(lead) => setSelectedLead(lead)}
             />
+
             {selectedLead && (
               <ApplicationDetail
                 lead={selectedLead}
@@ -405,7 +557,10 @@ const AdminDashboard = () => {
               Registered Agents / Clients
             </h2>
 
+            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
               {clients.map((client) => (
                 <div
                   key={client._id}
@@ -635,9 +790,10 @@ const AdminDashboard = () => {
 };
 
 /* ---------------- STAT CARD ---------------- */
-const StatCard = ({ label, value, icon, dark }) => (
+const StatCard = ({ label, value, icon, dark, onClick }) => (
   <div
-    className={`p-6 rounded-3xl border shadow-sm ${
+    onClick={onClick}
+    className={`p-6 rounded-3xl border shadow-sm cursor-pointer transition-all active:scale-95 hover:shadow-md ${
       dark ? "bg-[#0A1D37] text-white" : "bg-white"
     }`}
   >
