@@ -51,6 +51,7 @@ const ClientDashboard = () => {
   const [loanType, setLoanType] = useState("");
   const [formData, setFormData] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [leaves, setLeaves] = useState([]);
 
   const navigator = useNavigate();
   const handleLogOut = () => {
@@ -100,6 +101,15 @@ const ClientDashboard = () => {
       });
     } catch (err) {
       toast.error("Error loading leads");
+    }
+  }, []);
+
+  const fetchLeaveData = useCallback(async () => {
+    try {
+      const { data } = await API.get("/leaves/my-leaves");
+      setLeaves(data.data || []);
+    } catch (err) {
+      toast.error("Error fetching leave data");
     }
   }, []);
 
@@ -303,7 +313,103 @@ const ClientDashboard = () => {
 
         {/* Dynamic Content Area */}
 
-        {activeView === "dashboard" ? (
+        {activeView === "leave-requests" ? (
+          <>
+            <div className="mt-10 space-y-8">
+              <div>
+                <button
+                  onClick={() => setActiveView("dashboard")}
+                  className="flex items-center gap-2 text-gray-400 hover:text-slate-900 mb-6 transition-colors"
+                >
+                  <ArrowLeft size={20} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    Back to Dashbaord
+                  </span>
+                </button>
+              </div>
+              <div className="flex justify-between items-center">
+                <h3 className="font-black text-slate-900 flex items-center gap-2 text-xs uppercase tracking-widest">
+                  <CalendarX className="text-purple-600" size={16} />
+                  My Leave Requests
+                </h3>
+
+                {leaves.length > 2 && (
+                  <span className="text-[10px] font-black text-gray-400 uppercase animate-pulse">
+                    Scroll for more →
+                  </span>
+                )}
+              </div>
+
+              {leaves.length > 0 ? (
+                <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar snap-x">
+                  {leaves.map((leave) => (
+                    <div
+                      key={leave._id}
+                      className="min-w-[280px] md:min-w-[350px] flex-shrink-0 bg-white p-6 rounded-4xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow snap-start"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <p className="text-[10px] font-black text-purple-600 uppercase mb-1">
+                            {"Leave Request"}
+                          </p>
+
+                          <h4 className="font-black text-slate-900 uppercase text-sm">
+                            {new Date(leave.createdAt).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )}{" "}
+                            - {leave.type}
+                          </h4>
+                          <p className="mb-4 mt-1 text-[10px] font-bold text-gray-500 uppercase">
+                            Leave Status:{" "}
+                            <span
+                              className={`${
+                                leave.status === "Approved"
+                                  ? " text-green-600"
+                                  : leave.status === "Rejected"
+                                    ? " text-red-600"
+                                    : " text-orange-600"
+                              }`}
+                            >
+                              {leave.status}
+                            </span>
+                          </p>
+                        </div>
+
+                        <span
+                          className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${
+                            leave.status === "Approved"
+                              ? "bg-green-50 text-green-600"
+                              : leave.status === "Rejected"
+                                ? "bg-red-50 text-red-600"
+                                : "bg-orange-50 text-orange-600"
+                          }`}
+                        >
+                          {leave.status}
+                        </span>
+                      </div>
+
+                      <div className="mb-4 text-[10px] font-bold text-gray-500 uppercase">
+                        Reason:{" "}
+                        <span className="text-slate-900">
+                          {leave.reason || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 uppercase font-bold">
+                  No leave requests found.
+                </p>
+              )}
+            </div>
+          </>
+        ) : activeView === "dashboard" ? (
           <div className="mt-10 space-y-8">
             {/* Target Progress Bar */}
             {targetProgress.targetAmount > 0 && (
@@ -494,15 +600,19 @@ const ClientDashboard = () => {
 
             {/* Tools Grid */}
             <div className="space-y-4">
-              <h3 className="font-black text-slate-900 flex items-center gap-2 text-xs uppercase tracking-widest">
+              <h3 className="font-black text-slate-900 flex items-center gap-1 text-xs uppercase tracking-widest">
                 <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>{" "}
                 Quick Services
               </h3>
               <div className="bg-white border border-gray-100 rounded-4xl p-6 grid grid-cols-2 sm:grid-cols-4 gap-6 shadow-sm">
                 <ToolItem
-                  icon={<AlertCircle />}
-                  label="Fix Missing"
-                  onClick={() => setActiveView("unfinished")}
+                  icon={<CalendarX />}
+                  label="Leave request"
+                  onClick={() => {
+                    fetchDashboardData();
+                    fetchLeaveData();
+                    setActiveView("leave-requests");
+                  }}
                 />
                 <ToolItem
                   icon={<Calculator />}
@@ -522,6 +632,7 @@ const ClientDashboard = () => {
                     fetchTargetData();
                   }}
                 />
+                
               </div>
             </div>
 
@@ -911,6 +1022,21 @@ const ClientDashboard = () => {
                           />
                         </>
                       )}
+
+                      {
+                        loanType === "Other Loan Types" && (
+                  <InputField
+                    label="Loan Type"
+                    value={formData.additionalDetails || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        additionalDetails: e.target.value,
+                      })
+                    }
+                    placeholder="Specify loan type"
+                  />
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -966,19 +1092,7 @@ const ClientDashboard = () => {
                     </button>
                   </div>
                 )}
-                {loanType === "Other Loan Types" && (
-                  <InputField
-                    label="Additional Details"
-                    value={formData.additionalDetails || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        additionalDetails: e.target.value,
-                      })
-                    }
-                    placeholder="Specify loan purpose/details"
-                  />
-                )}
+                
               </form>
             )}
 
@@ -998,7 +1112,11 @@ const ClientDashboard = () => {
                   />
                   <TargetItem
                     label="Remaining"
-                    value={targetProgress.remainingAmount}
+                    value={Math.max(
+                      0,
+                      targetProgress.targetAmount -
+                        targetProgress.completedAmount,
+                    )}
                     color="orange"
                   />
                   <TargetItem

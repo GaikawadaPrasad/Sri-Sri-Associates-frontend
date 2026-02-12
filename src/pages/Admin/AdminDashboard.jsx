@@ -106,6 +106,9 @@ const AdminDashboard = () => {
     }
   };
 
+
+  
+
   const fetchAdminData = useCallback(async () => {
     try {
       setLoading(true);
@@ -200,7 +203,35 @@ const AdminDashboard = () => {
     }
   };
 
-  /* ---------------- DOWNLOAD (CLOUDINARY URL) ---------------- */
+
+
+  const handleDeleteClient = async (clientId) => {
+    if (!window.confirm("WARNING: Deleting this agent will remove all their leads and targets. Continue?")) return;
+    try {
+      await API.delete(`/users/${clientId}`);
+      toast.success("Agent and associated data removed");
+      setClients(clients.filter(c => c._id !== clientId));
+      setActiveView("dashboard"); // Return to main view after deletion
+    } catch (err) {
+      toast.error("Failed to delete agent");
+    }
+  };
+
+  
+
+
+  const handleDeleteLead = async (leadId) => {
+  if (window.confirm("Are you sure you want to delete this lead?")) {
+    try {
+      await API.delete(`/leads/${leadId}`);
+      toast.success("Lead removed");
+      // Refresh your lead list here
+      fetchAdminData(); 
+    } catch (err) {
+      toast.error("Delete failed");
+    }
+  }
+};
 
   // ApplicationDetail.jsx
   const handleDownload = async (url, name) => {
@@ -309,6 +340,7 @@ const AdminDashboard = () => {
           <ClientDetailView
             client={selectedClient}
             onBack={() => setSelectedClient(null)}
+            onDelete={handleDeleteClient}
           />
         ) : activeView === "clients" ? (
           <>
@@ -323,7 +355,8 @@ const AdminDashboard = () => {
                 <ClientCard
                   key={client._id}
                   client={client}
-                  onView={() => setSelectedClient(client)} // Set the selected client here
+                  onView={() => setSelectedClient(client)} 
+                  onDelete={() => handleDeleteClient(client._id)}
                 />
               ))}
             </div>
@@ -479,6 +512,7 @@ const AdminDashboard = () => {
                   : l.status.toUpperCase() === leadFilter,
               )}
               onUpdate={fetchAdminData}
+              onDelete={handleDeleteLead}
               onDownload={handleDownload}
               onSelectLead={(lead) => setSelectedLead(lead)}
             />

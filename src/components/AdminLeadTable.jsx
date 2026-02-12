@@ -5,12 +5,19 @@ import {
   ChevronDown,
   ArrowUpRight,
   FileText,
+  Trash2,
 } from "lucide-react";
 
 import API from "../api/axiosInstance";
 import toast from "react-hot-toast";
 
-const AdminLeadTable = ({ leads, onUpdate, onSelectLead, onDownload }) => {
+const AdminLeadTable = ({
+  leads,
+  onUpdate,
+  onSelectLead,
+  onDownload,
+  onDelete,
+}) => {
   const statusOptions = ["NEW LEAD", "Approved", "Disbursed", "Rejected"];
 
   const handleStatusChange = async (e, leadId, newStatus) => {
@@ -68,6 +75,16 @@ const AdminLeadTable = ({ leads, onUpdate, onSelectLead, onDownload }) => {
                       {lead.mobileNumber}
                     </p>
                   </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(lead._id);
+                    }}
+                    className="p-2 bg-red-50 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all"
+                    title="Delete Lead"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </td>
 

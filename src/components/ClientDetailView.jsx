@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-const ClientDetailView = ({ client, onBack }) => {
+const ClientDetailView = ({ client, onBack , onDelete }) => {
   const [stats, setStats] = useState({
     total: 0,
     approved: 0,
@@ -96,6 +96,10 @@ const ClientDetailView = ({ client, onBack }) => {
               <p className="text-xs text-gray-400 font-bold">{client.email}</p>
             </div>
 
+            <button onClick={() => onDelete(client._id)} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+              Delete Agent
+            </button>
+
             <div className="space-y-3">
               <StatRow
                 label="Total Leads"
@@ -134,12 +138,12 @@ const ClientDetailView = ({ client, onBack }) => {
             </div>
             {target ? (
               <>
-                <div className="text-3xl font-black mb-2">
-                  ₹{target.completedAmount?.toLocaleString()}
-                </div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase mb-4">
+                <p className="text-[18px] font-bold text-gray-300 uppercase mb-4">
                   Goal: ₹{target.targetAmount?.toLocaleString()}
                 </p>
+                <div className="text-xl font-black mb-2">
+                 Completed: ₹{target.completedAmount?.toLocaleString()}
+                </div>
                 <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-blue-500"
