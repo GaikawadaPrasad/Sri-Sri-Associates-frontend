@@ -44,6 +44,7 @@ const AdminDashboard = () => {
   const [searchInput, setSearchInput] = useState("");
   const [attendance, setAttendance] = useState([]);
   const [leaves, setLeaves] = useState([]);
+  const [loanTypeFilter, setLoanTypeFilter] = useState('');
   const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 1, hasNextPage: false, hasPrevPage: false });
   const [stats, setStats] = useState({
     totalCount: 0,
@@ -125,12 +126,13 @@ const AdminDashboard = () => {
   
 
   // Fetch paginated leads (called whenever page/filter/search changes)
-  const fetchLeads = useCallback(async (page = 1, filter = 'ALL', search = '') => {
+  const fetchLeads = useCallback(async (page = 1, filter = 'ALL', search = '', loanType = '') => {
     try {
       setLoading(true);
       const params = { page, limit: 15 };
       if (filter !== 'ALL') params.status = filter;
       if (search) params.search = search;
+      if (loanType) params.loanType = loanType;
       const res = await API.get('/leads/all', { params });
       setLeads(res.data.data || []);
       setPagination(res.data.pagination || { total: 0, page: 1, totalPages: 1 });
@@ -144,9 +146,10 @@ const AdminDashboard = () => {
   const fetchAdminData = useCallback(async () => {
     try {
       setLoading(true);
-      const [leadsRes, clientsRes, pendingRes, leavesRes, attendanceRes] =
+      const [leadsRes, statsRes, clientsRes, pendingRes, leavesRes, attendanceRes] =
         await Promise.all([
           API.get("/leads/all", { params: { page: 1, limit: 15 } }),
+          API.get("/leads/stats"),
           API.get("/users/clients"),
           API.get("/users/pending"),
           API.get("/leaves/admin/all"),
@@ -155,16 +158,17 @@ const AdminDashboard = () => {
 
       const pageLeads = leadsRes.data.data || [];
       const paginationInfo = leadsRes.data.pagination || {};
+      const statsData = statsRes.data.data || {};
 
       setLeads(pageLeads);
       setPagination(paginationInfo);
       setClients(clientsRes.data.data || []);
       setStats({
-        totalCount: paginationInfo.total || 0,
-        pendingCount: paginationInfo.pendingCount || 0,
-        disbursedCount: paginationInfo.disbursedCount || 0,
-        totalBusinessValue: 0,
-        insuranceCount: 0,
+        totalCount: statsData.totalCount || paginationInfo.total || 0,
+        pendingCount: statsData.pendingCount || 0,
+        disbursedCount: statsData.disbursedCount || 0,
+        totalBusinessValue: statsData.totalBusinessValue || 0,
+        insuranceCount: statsData.insuranceCount || 0,
       });
       setPendingUsers(pendingRes.data.data || []);
       setLeaves(leavesRes.data.data || []);
@@ -182,21 +186,25 @@ const AdminDashboard = () => {
     switch (type) {
       case "TOTAL":
         setLeadFilter("ALL");
+        setLoanTypeFilter('');
         setActiveView("dashboard");
         break;
 
       case "PENDING":
-        setLeadFilter("PENDING");
+        setLeadFilter("NEW LEAD");
+        setLoanTypeFilter('');
         setActiveView("dashboard");
         break;
 
       case "DISBURSED":
-        setLeadFilter("DISBURSED");
+        setLeadFilter("Disbursed");
+        setLoanTypeFilter('');
         setActiveView("dashboard");
         break;
 
       case "INSURANCE":
-        setLeadFilter("INSURANCE");
+        setLeadFilter("ALL");
+        setLoanTypeFilter("Vehicle Insurance");
         setActiveView("dashboard");
         break;
 
@@ -223,9 +231,9 @@ const AdminDashboard = () => {
 
   // Re-fetch leads when filter, search, or page changes
   useEffect(() => {
-    fetchLeads(pagination.page, leadFilter, searchQuery);
+    fetchLeads(pagination.page, leadFilter, searchQuery, loanTypeFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadFilter, searchQuery, pagination.page]);
+  }, [leadFilter, loanTypeFilter, searchQuery, pagination.page]);
 
   const handleLeaveStatus = async (id, status) => {
     try {
@@ -427,7 +435,7 @@ const AdminDashboard = () => {
 
               <StatCard
                 label="Insurance"
-                value={insuranceCount}
+                value={stats.insuranceCount}
                 icon={<ShieldCheck className="text-emerald-500" />}
                 onClick={() => handleStatClick("INSURANCE")}
               />
@@ -435,17 +443,21 @@ const AdminDashboard = () => {
 
             {/* FILTERS */}
             <div className="flex gap-2 mb-6">
-              {["ALL", "PENDING", "DISBURSED"].map((f) => (
+              {[
+                { label: "ALL", value: "ALL" },
+                { label: "PENDING", value: "NEW LEAD" },
+                { label: "DISBURSED", value: "Disbursed" },
+              ].map(({ label, value: f }) => (
                 <button
                   key={f}
-                  onClick={() => setLeadFilter(f)}
+                  onClick={() => { setLeadFilter(f); setLoanTypeFilter(''); }}
                   className={`px-4 py-2 rounded-full text-xs font-black ${
-                    leadFilter === f
+                    leadFilter === f && !loanTypeFilter
                       ? "bg-blue-600 text-white"
                       : "bg-gray-100 text-gray-500"
                   }`}
                 >
-                  {f}
+                  {label}
                 </button>
               ))}
               <button
@@ -522,7 +534,7 @@ const AdminDashboard = () => {
 
             <AdminLeadTable
               leads={filteredLeads}
-              onUpdate={() => fetchLeads(pagination.page, leadFilter, searchQuery)}
+              onUpdate={() => fetchLeads(pagination.page, leadFilter, searchQuery, loanTypeFilter)}
               onDelete={handleDeleteLead}
               onDownload={handleDownload}
               onSelectLead={(lead) => setSelectedLead(lead)}
