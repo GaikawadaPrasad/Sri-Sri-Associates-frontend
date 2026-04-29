@@ -35,40 +35,55 @@ const AdminDashboard = () => {
   const [leads, setLeads] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [leadFilter, setLeadFilter] = useState("ALL"); // ALL | PENDING | DISBURSED
+  const [leadFilter, setLeadFilter] = useState("ALL");
   const [pendingUsers, setPendingUsers] = useState([]);
   const [selectedLead, setSelectedLead] = useState(null);
   const [activeView, setActiveView] = useState("dashboard");
   const [selectedClient, setSelectedClient] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [attendance, setAttendance] = useState([]);
   const [leaves, setLeaves] = useState([]);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 1, hasNextPage: false, hasPrevPage: false });
   const [stats, setStats] = useState({
     totalCount: 0,
     pendingCount: 0,
     disbursedCount: 0,
     totalBusinessValue: 0,
+    insuranceCount: 0,
   });
 
-  const { logout } = useContext(AuthContext);
-
+  const { logout, user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const searchDebounce = React.useRef(null);
+
+  if (!user) {
+    logout();
+    navigate("/");
+  }
 
   const handleLogOut = () => {
     logout();
     navigate("/");
   };
 
+  // Debounced search handler
+  const handleSearchInput = (value) => {
+    setSearchInput(value);
+    clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      setSearchQuery(value);
+      setPagination(p => ({ ...p, page: 1 }));
+    }, 400);
+  };
+
   const fetchPendingUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const [leadsRes, clientsRes, pendingRes] = await Promise.all([
-        API.get("/leads/all"),
+      const [clientsRes, pendingRes] = await Promise.all([
         API.get("/users/clients"),
         API.get("/users/pending"),
       ]);
-
-      setLeads(leadsRes.data.data || []);
       setClients(clientsRes.data.data || []);
       setPendingUsers(pendingRes.data.data || []);
     } catch (err) {
@@ -109,35 +124,48 @@ const AdminDashboard = () => {
 
   
 
+  // Fetch paginated leads (called whenever page/filter/search changes)
+  const fetchLeads = useCallback(async (page = 1, filter = 'ALL', search = '') => {
+    try {
+      setLoading(true);
+      const params = { page, limit: 15 };
+      if (filter !== 'ALL') params.status = filter;
+      if (search) params.search = search;
+      const res = await API.get('/leads/all', { params });
+      setLeads(res.data.data || []);
+      setPagination(res.data.pagination || { total: 0, page: 1, totalPages: 1 });
+    } catch (err) {
+      toast.error('Failed to load leads');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const fetchAdminData = useCallback(async () => {
     try {
       setLoading(true);
       const [leadsRes, clientsRes, pendingRes, leavesRes, attendanceRes] =
         await Promise.all([
-          API.get("/leads/all"),
+          API.get("/leads/all", { params: { page: 1, limit: 15 } }),
           API.get("/users/clients"),
           API.get("/users/pending"),
           API.get("/leaves/admin/all"),
           API.get("/attendance/admin/today-logs"),
         ]);
 
-      const allLeads = leadsRes.data.data || [];
+      const pageLeads = leadsRes.data.data || [];
+      const paginationInfo = leadsRes.data.pagination || {};
 
-      const pending = allLeads.filter((l) => l.status === "NEW LEAD");
-      const disbursed = allLeads.filter((l) => l.status === "Disbursed");
-
-      setLeads(allLeads);
+      setLeads(pageLeads);
+      setPagination(paginationInfo);
       setClients(clientsRes.data.data || []);
       setStats({
-        totalCount: allLeads.length,
-        pendingCount: pending.length,
-        disbursedCount: disbursed.length,
-        totalBusinessValue: disbursed.reduce(
-          (sum, l) => sum + (Number(l.loanAmount) || 0),
-          0,
-        ),
+        totalCount: paginationInfo.total || 0,
+        pendingCount: paginationInfo.pendingCount || 0,
+        disbursedCount: paginationInfo.disbursedCount || 0,
+        totalBusinessValue: 0,
+        insuranceCount: 0,
       });
-
       setPendingUsers(pendingRes.data.data || []);
       setLeaves(leavesRes.data.data || []);
       setAttendance(attendanceRes.data.data || []);
@@ -192,6 +220,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchAdminData();
   }, [fetchAdminData]);
+
+  // Re-fetch leads when filter, search, or page changes
+  useEffect(() => {
+    fetchLeads(pagination.page, leadFilter, searchQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadFilter, searchQuery, pagination.page]);
 
   const handleLeaveStatus = async (id, status) => {
     try {
@@ -262,32 +296,9 @@ const AdminDashboard = () => {
       </div>
     );
   }
-  const insuranceCount = leads.filter(
-    (l) => l.loanType === "Vehicle Insurance",
-  ).length;
 
-  const getFilteredLeads = () => {
-    switch (leadFilter) {
-      case "PENDING":
-        return leads.filter((l) => l.status === "NEW LEAD");
-      case "DISBURSED":
-        return leads.filter((l) => l.status === "Disbursed");
-      case "INSURANCE":
-        return leads.filter((l) => l.loanType === "Vehicle Insurance");
-      default:
-        return leads;
-    }
-  };
-
-  const filteredLeads = leads.filter((lead) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      lead.customerName?.toLowerCase().includes(query) ||
-      lead.mobileNumber?.includes(query) ||
-      lead.loanType?.toLowerCase().includes(query) ||
-      lead.status?.toLowerCase().includes(query)
-    );
-  });
+  // leads are already filtered/paginated server-side
+  const filteredLeads = leads;
 
   
 
@@ -487,35 +498,76 @@ const AdminDashboard = () => {
               </div>
               <input
                 type="text"
-                placeholder={
-                  activeView === "clients"
-                    ? "Search clients by name or mobile..."
-                    : "Search leads by customer name..."
-                }
+                placeholder="Search leads by name, mobile, loan type..."
                 className="w-full pl-12 pr-10 py-3 bg-white border border-gray-100 rounded-2xl shadow-sm text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => handleSearchInput(e.target.value)}
               />
-              {searchQuery && (
+              {searchInput && (
                 <button
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => { setSearchInput(''); setSearchQuery(''); }}
                   className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-red-500"
                 >
                   <X size={18} />
                 </button>
               )}
             </div>
+
+            {/* Loading overlay for pagination */}
+            {loading && (
+              <div className="flex justify-center py-4">
+                <RefreshCcw className="animate-spin text-blue-400" size={20} />
+              </div>
+            )}
+
             <AdminLeadTable
-              leads={filteredLeads.filter((l) =>
-                leadFilter === "ALL"
-                  ? true
-                  : l.status.toUpperCase() === leadFilter,
-              )}
-              onUpdate={fetchAdminData}
+              leads={filteredLeads}
+              onUpdate={() => fetchLeads(pagination.page, leadFilter, searchQuery)}
               onDelete={handleDeleteLead}
               onDownload={handleDownload}
               onSelectLead={(lead) => setSelectedLead(lead)}
             />
+
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <p className="text-xs font-bold text-gray-400 uppercase">
+                  Showing {((pagination.page - 1) * 15) + 1}–{Math.min(pagination.page * 15, pagination.total)} of {pagination.total} leads
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    disabled={!pagination.hasPrevPage}
+                    onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+                    className="px-4 py-2 rounded-xl text-xs font-black bg-white border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-all"
+                  >
+                    ← Prev
+                  </button>
+                  {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
+                    const pg = Math.max(1, Math.min(pagination.page - 2, pagination.totalPages - 4)) + i;
+                    return (
+                      <button
+                        key={pg}
+                        onClick={() => setPagination(p => ({ ...p, page: pg }))}
+                        className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${
+                          pg === pagination.page
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pg}
+                      </button>
+                    );
+                  })}
+                  <button
+                    disabled={!pagination.hasNextPage}
+                    onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+                    className="px-4 py-2 rounded-xl text-xs font-black bg-white border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-all"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            )}
 
             {selectedLead && (
               <ApplicationDetail

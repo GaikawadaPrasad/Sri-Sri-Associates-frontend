@@ -169,7 +169,7 @@ const DocLink = ({ name, url }) => (
         <FileText size={20} className="text-blue-600 group-hover:text-blue-400" />
       </div>
       <div>
-        <span className="block text-[10px] font-black text-slate-900 group-hover:text-white uppercase truncate max-w-[150px]">
+        <span className="block text-[10px] font-black text-slate-900 group-hover:text-white uppercase truncate max-w-37.5">
           {name}
         </span>
         <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">View Resource</span>

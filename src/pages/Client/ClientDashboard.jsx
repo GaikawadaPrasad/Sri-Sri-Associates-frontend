@@ -30,6 +30,16 @@ import { useNavigate } from "react-router-dom";
 
 const ClientDashboard = () => {
   const { user, logout } = useContext(AuthContext);
+  const navigator = useNavigate();
+
+console.log("CURRENT USER IN CLIENT DASHBOARD.JSX:", user);
+  if(!user){
+    logout();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    navigator("/");
+  }
   const [activeView, setActiveView] = useState("dashboard");
   const [leads, setLeads] = useState([]);
   const [stats, setStats] = useState({
@@ -53,7 +63,6 @@ const ClientDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [leaves, setLeaves] = useState([]);
 
-  const navigator = useNavigate();
   const handleLogOut = () => {
     logout();
     navigator("/");

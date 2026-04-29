@@ -3,7 +3,7 @@ import { User, ArrowUpRight, Mail, ShieldCheck } from 'lucide-react';
 
 const ClientCard = ({ client, onView }) => {
   return (
-    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl hover:border-blue-100 transition-all group">
+    <div className="bg-white p-6 rounded-4xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-blue-100 transition-all group">
       <div className="flex justify-between items-start mb-4">
         {/* Avatar Circle */}
         <div className="w-14 h-14 bg-slate-50 text-slate-900 rounded-2xl flex items-center justify-center text-xl font-black group-hover:bg-blue-600 group-hover:text-white transition-colors">

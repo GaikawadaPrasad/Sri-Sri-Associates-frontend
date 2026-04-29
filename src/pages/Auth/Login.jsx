@@ -1,103 +1,252 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import API from "../../api/axiosInstance";
-import { Lock, Mail, AlertCircle } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Eye, EyeOff, Building2, TrendingUp, Shield, Wifi } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  const { login , user } = useContext(AuthContext);
-  console.log("CURRENT USER IN LOGIN.JSX:" , user);
+  const [showPassword, setShowPassword] = useState(false);
+  const [warmingUp, setWarmingUp] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const warmupTimer = useRef(null);
+  const elapsedTimer = useRef(null);
+
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(warmupTimer.current);
+      clearInterval(elapsedTimer.current);
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setElapsed(0);
+    setWarmingUp(false);
+
+    // Show warm-up message after 3 seconds
+    warmupTimer.current = setTimeout(() => {
+      setWarmingUp(true);
+      elapsedTimer.current = setInterval(() => {
+        setElapsed(prev => prev + 1);
+      }, 1000);
+    }, 3000);
 
     try {
       const { data } = await API.post('/auth/login', formData);
-      
-      // Save to Context & LocalStorage
+
+      clearTimeout(warmupTimer.current);
+      clearInterval(elapsedTimer.current);
+      setWarmingUp(false);
+
       login(data.user, data.token);
 
-      // Role-based redirection
       if (data.user.role === 'ADMIN') {
         navigate('/admin/dashboard');
-        toast.success('Welcome Admin!');
+        toast.success('Welcome back, Admin!');
       } else {
         navigate('/client/dashboard');
         toast.success('Login Successful!');
-
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong');
-      toast.error(err.response?.data?.message || 'Something went wrong');
+      clearTimeout(warmupTimer.current);
+      clearInterval(elapsedTimer.current);
+      setWarmingUp(false);
+      const msg = err.response?.data?.message || err.message || 'Something went wrong';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg border border-gray-100">
-        <div>
-          <h2 className="text-center text-3xl font-extrabold text-blue-900">
-            SRI SRI ASSOCIATES
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to manage your loan leads
-          </p>
+    <div className="min-h-screen flex bg-gray-50">
+      {/* LEFT PANEL — Branding */}
+      <div className="hidden lg:flex lg:w-5/12 bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex-col justify-between p-12 relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-32 translate-x-32" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full translate-y-48 -translate-x-32" />
+        <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-blue-500/20 rounded-full -translate-x-24 -translate-y-24" />
+
+        {/* Logo */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center border border-white/20">
+              <Building2 className="text-white" size={22} />
+            </div>
+            <div>
+              <h1 className="text-white font-black text-sm uppercase tracking-widest">Sri Sri</h1>
+              <p className="text-blue-200 text-xs font-bold uppercase tracking-widest">Associates</p>
+            </div>
+          </div>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 flex items-center">
-            <AlertCircle className="text-red-500 mr-3" size={20} />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
-              <input
-                type="email"
-                required
-                className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Email address"
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-              />
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
-              <input
-                type="password"
-                required
-                className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Password"
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-              />
-            </div>
+        {/* Center content */}
+        <div className="relative z-10 space-y-8">
+          <div>
+            <h2 className="text-white text-3xl font-black leading-tight uppercase tracking-tight">
+              Loan Management<br />
+              <span className="text-blue-300">Simplified.</span>
+            </h2>
+            <p className="text-blue-200 text-sm mt-4 leading-relaxed font-medium">
+              Your complete platform for managing loan leads, tracking targets, and empowering field agents.
+            </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400"
-          >
-            {loading ? 'Authenticating...' : 'Sign In'}
-          </button>
-        </form>
+          <div className="space-y-4">
+            {[
+              { icon: TrendingUp, label: "Real-time lead tracking" },
+              { icon: Shield, label: "Role-based secure access" },
+              { icon: Building2, label: "Complete loan lifecycle management" },
+            ].map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center border border-white/20">
+                  <Icon size={14} className="text-blue-300" />
+                </div>
+                <span className="text-blue-100 text-xs font-semibold">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <p className="text-center text-sm text-gray-600">
-          New here? <Link to="/signup" className="text-blue-600 font-bold">Create Account</Link>
-        </p>
+        {/* Footer */}
+        <div className="relative z-10">
+          <p className="text-blue-400 text-xs font-medium">
+            © 2025 Sri Sri Associates. All rights reserved.
+          </p>
+        </div>
+      </div>
+
+      {/* RIGHT PANEL — Login Form */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center">
+              <Building2 className="text-white" size={20} />
+            </div>
+            <div>
+              <h1 className="text-blue-900 font-black text-sm uppercase tracking-widest">Sri Sri Associates</h1>
+            </div>
+          </div>
+
+          <div className="mb-8">
+            <h2 className="text-2xl font-black text-gray-900">Welcome back</h2>
+            <p className="text-gray-500 text-sm mt-1">Sign in to your account to continue</p>
+          </div>
+
+          {/* Error alert */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="text-red-500 mt-0.5 shrink-0" size={16} />
+              <p className="text-sm text-red-700 font-medium">{error}</p>
+            </div>
+          )}
+
+          {/* Warm-up notice */}
+          {warmingUp && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Wifi className="text-amber-500 animate-pulse shrink-0" size={16} />
+                <p className="text-sm text-amber-800 font-bold">Server is waking up…</p>
+              </div>
+              <p className="text-xs text-amber-700 mb-3">
+                Our server goes to sleep when idle. This first login may take up to 45 seconds.
+              </p>
+              {/* Progress bar */}
+              <div className="w-full bg-amber-100 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="h-full bg-amber-400 rounded-full transition-all duration-1000"
+                  style={{ width: `${Math.min((elapsed / 45) * 100, 95)}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-amber-600 mt-1.5 font-medium text-right">{elapsed}s elapsed</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email */}
+            <div>
+              <label className="block text-xs font-bold text-gray-600 uppercase tracking-widest mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  id="login-email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-xs font-bold text-gray-600 uppercase tracking-widest mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  className="w-full pl-11 pr-12 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              id="login-submit"
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 px-4 bg-blue-900 hover:bg-blue-800 disabled:bg-blue-400 text-white text-sm font-black uppercase tracking-widest rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20 active:scale-[0.98]"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {warmingUp ? 'Waking Server...' : 'Authenticating...'}
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-gray-500 mt-8">
+            New here?{' '}
+            <Link to="/signup" className="text-blue-700 font-bold hover:text-blue-900 transition-colors">
+              Create an Account
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
