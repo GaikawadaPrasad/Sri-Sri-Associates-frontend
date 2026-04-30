@@ -114,7 +114,7 @@ const LeadHistory = ({ leads, onLeadClick, onEditClick }) => {
                     </div>
                     <div>
                       <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">
-                        {lead.customerName}
+                        {lead.customerName || 'Unknown'}
                       </h4>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[9px] font-bold text-gray-400 uppercase">

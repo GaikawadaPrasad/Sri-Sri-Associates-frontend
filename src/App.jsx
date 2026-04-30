@@ -13,6 +13,7 @@ import ClientManagement from "./components/ClientManagement";
 import EMICalculator from "./components/EMICalculator";
 import LeadHistory from "./components/LeadHistory";
 import LeadDetailsView from "./components/LeadDetailsView";
+import LandingPage from "./pages/Public/LandingPage";
 
 
 // const Layout = ({ children }) => (
@@ -232,7 +233,7 @@ function App() {
             }
           />
 
-          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/" element={<LandingPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

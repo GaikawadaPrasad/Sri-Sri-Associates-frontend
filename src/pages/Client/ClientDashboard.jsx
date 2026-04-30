@@ -32,7 +32,7 @@ const ClientDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const navigator = useNavigate();
 
-console.log("CURRENT USER IN CLIENT DASHBOARD.JSX:", user);
+// console.log("CURRENT USER IN CLIENT DASHBOARD.JSX:", user);
   if(!user){
     logout();
     localStorage.removeItem("token");

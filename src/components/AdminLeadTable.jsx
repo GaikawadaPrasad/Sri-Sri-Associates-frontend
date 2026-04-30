@@ -72,7 +72,8 @@ const AdminLeadTable = ({
                       {lead.customerName}
                     </p>
                     <p className="text-[10px] text-gray-400 font-bold">
-                      {lead.mobileNumber}
+                      {lead.mobileNumber} <br />
+                      {lead.createdAt.split("T")[0]}
                     </p>
                   </div>
                   <button
