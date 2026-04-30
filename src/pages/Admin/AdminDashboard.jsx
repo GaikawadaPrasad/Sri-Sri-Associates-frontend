@@ -21,6 +21,7 @@ import {
   UserMinus,
   LogOut,
   ShieldCheck,
+  Calculator,
 } from "lucide-react";
 import AdminLeadTable from "../../components/AdminLeadTable";
 import TargetView from "../../components/TargetView";
@@ -28,6 +29,7 @@ import toast from "react-hot-toast";
 import ApplicationDetail from "../../components/ApplicationDetail";
 import ClientDetailView from "../../components/ClientDetailView";
 import ClientCard from "../../components/ClientCard";
+import EMICalculator from "../../components/EMICalculator";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 
@@ -501,6 +503,17 @@ const AdminDashboard = () => {
               >
                 <Clock size={14} /> Live Attendance
               </button>
+
+              <button
+                onClick={() => setActiveView("emi")}
+                className={`px-4 py-2 rounded-full text-xs font-black flex items-center gap-2 ${
+                  activeView === "emi"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                <Calculator size={14} /> EMI Calculator
+              </button>
             </div>
 
             {/* TABLE */}
@@ -870,6 +883,16 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
+          </div>
+        ) : activeView === "emi" ? (
+          <div className="animate-in fade-in slide-in-from-bottom-4">
+            <button
+              onClick={() => setActiveView("dashboard")}
+              className="flex items-center gap-2 text-xs font-black mb-6"
+            >
+              <ArrowLeft size={16} /> Back to Dashboard
+            </button>
+            <EMICalculator adminMode />
           </div>
         ) : (
           <div>

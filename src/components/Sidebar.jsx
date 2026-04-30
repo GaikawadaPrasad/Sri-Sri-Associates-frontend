@@ -24,7 +24,7 @@ const Sidebar = () => {
 
   const adminLinks = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={20} /> },
-    { name: 'EMI Calculator', path: '/client/emi-calculator', icon: <Calculator size={20} /> },
+    { name: 'EMI Calculator', path: '/admin/emi-calculator', icon: <Calculator size={20} /> },
     { name: 'Agents', path: '/admin/agents', icon: <Users size={20} /> },
   ];
 

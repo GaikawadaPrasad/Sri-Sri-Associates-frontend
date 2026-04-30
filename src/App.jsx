@@ -233,6 +233,17 @@ function App() {
             }
           />
 
+          <Route
+            path="/admin/emi-calculator"
+            element={
+              <ProtectedRoute role="ADMIN">
+                <Layout>
+                  <EMICalculator adminMode />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/" element={<LandingPage />} />
         </Routes>
       </BrowserRouter>
