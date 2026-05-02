@@ -244,7 +244,7 @@ function App() {
             }
           />
 
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<Login />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
